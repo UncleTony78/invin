@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "repeating-stripes-gradient",
+        "value": "*",
+        "files": [
+          "design/comps/index.html"
+        ],
+        "createdAt": "2026-11-13T08:04:34.217Z",
+        "reason": "Claude: hatch encodes the Drafts (not sent) segment of the money pipeline; meaning, not decoration"
+      }
+    ]
+  }
+}

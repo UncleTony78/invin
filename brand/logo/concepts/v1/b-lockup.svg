@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 256">
+  <path d="M93.13 34.27A100 100 0 0 0 128 228Z" fill="#111"/>
+  <path d="M162.87 34.27A100 100 0 0 1 128 228Z" fill="#111"/>
+<g transform="translate(280,6) scale(0.9)" fill="#111"><rect x="0" y="80" width="28" height="120"/><circle cx="14" cy="48" r="16"/><rect x="52" y="80" width="28" height="120"/><path d="M52 200V130A50 50 0 0 1 152 130V200H124V130A22 22 0 0 0 80 130V200Z"/><path d="M166 80H196L216 146.7L236 80H266L230 200H202Z"/><rect x="280" y="80" width="28" height="120"/><circle cx="294" cy="48" r="16"/><rect x="332" y="80" width="28" height="120"/><path d="M332 200V130A50 50 0 0 1 432 130V200H404V130A22 22 0 0 0 360 130V200Z"/></g></svg>

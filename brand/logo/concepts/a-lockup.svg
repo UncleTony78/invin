@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 256"><title>invin</title>
+  <path d="M48 93H92L128 165L164 93H208L148 213H108Z" fill="#111"/>
+  <circle cx="53.9" cy="60.8" r="22" fill="#111"/>
+  <circle cx="202.1" cy="60.8" r="22" fill="#111"/>
+<g transform="translate(276,18) scale(0.86)" fill="#111"><rect x="0" y="80" width="28" height="120"/><circle cx="14" cy="48" r="16"/><rect x="52" y="80" width="28" height="120"/><path d="M52 200V130A50 50 0 0 1 152 130V200H124V130A22 22 0 0 0 80 130V200Z"/><path d="M166 80 L196 80 L216 154.64 L236 80 L266 80 L233.85 200 L198.15 200Z"/><rect x="280" y="80" width="28" height="120"/><circle cx="294" cy="48" r="16"/><rect x="332" y="80" width="28" height="120"/><path d="M332 200V130A50 50 0 0 1 432 130V200H404V130A22 22 0 0 0 360 130V200Z"/></g></svg>

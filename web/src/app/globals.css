@@ -1,0 +1,84 @@
+@import "tailwindcss";
+@import "../styles/tokens.css";
+@import "../styles/ui.css";
+@import "../styles/invoice.css";
+@import "../styles/shell.css";
+@import "../styles/public.css";
+@import "../styles/onboarding.css";
+
+/* Dark mode follows [data-theme="dark"] on <html>, set by the theme toggle. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+:root {
+  /* next/font provides the families; tokens keep the fallbacks */
+  --font-sans: var(--font-plex-sans), "Segoe UI", system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --shadow-modal: 0 0 0 1px rgba(26, 25, 22, 0.06), 0 24px 64px -16px rgba(26, 25, 22, 0.3);
+}
+[data-theme="dark"] {
+  --shadow-modal: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 24px 64px -16px rgba(0, 0, 0, 0.7);
+}
+
+/* Tokens exposed to Tailwind so layout utilities stay on the system */
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-hover: var(--hover);
+  --color-line: var(--line);
+  --color-line-2: var(--line-2);
+  --color-text: var(--text);
+  --color-text-2: var(--text-2);
+  --color-signal: var(--signal);
+  --radius-md: var(--r-md);
+  --radius-lg: var(--r-lg);
+  --radius-xl: var(--r-xl);
+}
+
+html,
+body {
+  background: var(--canvas);
+  color: var(--text);
+}
+body {
+  font-family: var(--font-sans);
+  font-size: var(--fs-14);
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+::selection {
+  background: #ffd9c9;
+  color: #1a1916;
+}
+[data-theme="dark"] ::selection {
+  background: #5a2a16;
+  color: #fff;
+}
+/* Overlay containers take focus programmatically; their controls show the ring, not the whole panel */
+.iv-sheet:focus-visible,
+.iv-dialog:focus-visible,
+.iv-popup:focus-visible,
+.iv-palette:focus-visible {
+  outline: none;
+}
+/* Fields that draw their own focus state on the surrounding shape */
+/* Text fields show focus on their own border (ink + soft halo), never with a second ring on top */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[contenteditable]:focus-visible {
+  outline: none;
+}
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+input,
+textarea {
+  caret-color: var(--text);
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-2) transparent;
+}

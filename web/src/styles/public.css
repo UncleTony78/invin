@@ -1,0 +1,65 @@
+/* Customer's invoice page (/i/[token]). The sender's brand leads; InVin stays a footnote. */
+@layer components {
+  .pub { min-height: 100dvh; background: var(--canvas); display: flex; flex-direction: column; }
+  .pub-preview { background: var(--accent-soft); color: var(--accent-text); text-align: center; font-size: var(--fs-13); padding: 8px 16px; }
+  .pub-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; max-width: 1180px; width: 100%; margin: 0 auto; padding: 20px 24px; }
+  .pub-biz { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: var(--fs-15); }
+  .pub-biz .mk { width: 30px; height: 30px; border-radius: 8px; background: var(--brand); color: #fff; display: grid; place-items: center; font-size: 11px; }
+  .pub-grid { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 32px; max-width: 1180px; width: 100%; margin: 0 auto; padding: 8px 24px 48px; align-items: start; }
+  .pub-paper { order: 1; }
+  .pub-panel { order: 2; position: sticky; top: 24px; background: var(--surface); border-radius: var(--r-xl); box-shadow: 0 0 0 1px var(--line), 0 12px 32px -18px rgba(26, 25, 22, 0.18); padding: 26px; display: grid; gap: 4px; }
+  .pub-l { color: var(--text-2); font-size: var(--fs-13); }
+  .pub-amt { font-size: var(--fs-34); font-weight: 500; letter-spacing: -0.025em; line-height: 1.1; margin-top: 2px; }
+  .pub-due { color: var(--text-2); font-size: var(--fs-13); margin-top: 6px; }
+  .pub-due.late { color: var(--st-overdue); }
+  .pub-state h1 { font-size: var(--fs-22); font-weight: 600; letter-spacing: -0.015em; margin-top: 10px; }
+  .pub-state p { color: var(--text-2); margin-top: 6px; line-height: 1.5; }
+  .pub-tick { width: 40px; height: 40px; border-radius: 50%; background: var(--st-paid-bg); color: var(--st-paid); display: grid; place-items: center; }
+  .pub-bank { margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--line); }
+  .pub-bank h2 { font-size: var(--fs-14); font-weight: 600; margin-bottom: 10px; }
+  .pub-row { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "k btn" "v btn"; align-items: center; column-gap: 8px; padding: 8px 4px 8px 10px; margin: 0 -10px; border-radius: var(--r-md); transition: background-color var(--m-in); }
+  @media (hover: hover) { .pub-row:hover { background: var(--surface-2); } }
+  .pub-row dt { grid-area: k; font-size: var(--fs-12); color: var(--text-2); }
+  .pub-row dd { grid-area: v; font-size: var(--fs-14); word-break: break-all; }
+  .pub-row[data-strong] { background: color-mix(in srgb, var(--brand) 7%, transparent); }
+  .pub-row[data-strong] dd { font-weight: 500; }
+  .pub-copy { grid-area: btn; width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; color: var(--text-2); background: none; border: 0; cursor: pointer; transition: background-color var(--m-in), color var(--m-in), transform var(--m-in) var(--ease-out); }
+  .pub-copy:hover { background: var(--pressed); color: var(--text); }
+  .pub-copy:active { transform: scale(0.94); }
+  .pub-cta { margin-top: 18px; width: 100%; height: 44px; font-size: var(--fs-14); background: var(--brand); color: #fff; }
+  @media (hover: hover) and (pointer: fine) { .pub-cta:hover { background: color-mix(in srgb, var(--brand) 86%, #000); transform: translateY(-1px); } }
+  .pub-claimed { margin-top: 18px; display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: var(--r-md); background: var(--st-awaiting-bg); color: var(--st-awaiting); font-size: var(--fs-13); line-height: 1.5; }
+  .pub-claimed svg { margin-top: 2px; }
+  .pub-ask { margin-top: 14px; display: inline-flex; align-items: center; gap: 8px; color: var(--text-2); font-size: var(--fs-13); justify-self: center; }
+  .pub-ask:hover { color: var(--text); }
+  .pub-foot { margin-top: auto; display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--text-2); font-size: var(--fs-12); padding: 20px; }
+  /* success: the circle and tick draw themselves (a rare moment, earned) */
+  .pub-done { display: grid; place-items: center; padding: 8px 0 4px; }
+  .pub-done svg { width: 64px; height: 64px; fill: none; stroke: var(--st-paid); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+  .pub-done circle { stroke-dasharray: 151; stroke-dashoffset: 151; animation: pub-draw 520ms var(--ease-out) forwards; }
+  .pub-done path { stroke-dasharray: 36; stroke-dashoffset: 36; animation: pub-draw 320ms 380ms var(--ease-out) forwards; }
+  @keyframes pub-draw { to { stroke-dashoffset: 0; } }
+}
+@media (max-width: 900px) {
+  .pub-grid { grid-template-columns: 1fr; gap: 20px; padding: 0 16px 32px; }
+  .pub-panel { position: static; order: 1; }
+  .pub-paper { order: 2; }
+  .pub-top { padding: 16px; }
+  .pub-top .iv-btn span, .pub-top .iv-btn { font-size: var(--fs-13); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pub-done circle, .pub-done path { animation: none; stroke-dashoffset: 0; }
+}
+/* Print page used to render the PDF: just the paper, edge to edge on A4 */
+.print-page { margin: 0; background: #fff; }
+/* Long invoices flow onto more pages: the item header repeats, rows and the totals/bank block never split */
+.print-page .iv-paper { width: 210mm; min-height: 297mm; height: auto; aspect-ratio: auto; box-shadow: none; border-radius: 0; overflow: visible; }
+.print-page .iv-paper thead { display: table-header-group; }
+.print-page .iv-paper tr, .print-page .iv-paper .tot, .print-page .iv-paper .bank, .print-page .iv-paper .bankcard, .print-page .iv-paper .payb, .print-page .iv-paper .foot { break-inside: avoid; }
+@page { size: A4; margin: 14mm 0; }
+@page :first { margin-top: 0; }
+@layer components {
+  /* The customer's primary action wears the sender's brand, at the same size as every other button */
+  .pub-brand { background: var(--brand); color: #fff; }
+  @media (hover: hover) { .pub-brand:hover:not(:disabled) { background: color-mix(in srgb, var(--brand) 88%, #000); } }
+}

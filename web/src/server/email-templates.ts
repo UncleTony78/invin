@@ -1,0 +1,89 @@
+import "server-only";
+
+/* Plain, readable emails in the sender's brand colour. Table layout so every mail client renders them. */
+
+const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
+
+function shell({ brand, business, preheader, body, button }: { brand: string; business: string; preheader: string; body: string; button?: { label: string; url: string } }) {
+  return `<!doctype html><html><body style="margin:0;background:#F2F2EF;font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;color:#1A1916">
+<span style="display:none;max-height:0;overflow:hidden">${esc(preheader)}</span>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:32px 12px"><tr><td align="center">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#fff;border-radius:14px;overflow:hidden">
+<tr><td style="background:${brand};padding:20px 28px;color:#fff;font-weight:600;font-size:15px">${esc(business)}</td></tr>
+<tr><td style="padding:28px;font-size:15px;line-height:1.6">${body}
+${button ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:24px"><tr><td style="background:${brand};border-radius:8px"><a href="${button.url}" style="display:inline-block;padding:12px 20px;color:#fff;text-decoration:none;font-weight:600">${esc(button.label)}</a></td></tr></table>` : ""}
+</td></tr></table>
+<p style="font-size:12px;color:#6E6C66;margin-top:16px">Sent with InVin</p>
+</td></tr></table></body></html>`;
+}
+
+const paragraphs = (text: string) => text.split(/\n{2,}/).map((p) => `<p style="margin:0 0 14px">${esc(p).replace(/\n/g, "<br>")}</p>`).join("");
+
+export function invoiceEmail(o: { brand: string; business: string; number: string; amount: string; due: string; message: string; url: string }) {
+  const text = `${o.message}\n\nView, download or pay invoice ${o.number}: ${o.url}`;
+  const html = shell({
+    brand: o.brand,
+    business: o.business,
+    preheader: `Invoice ${o.number} for ${o.amount}, due ${o.due}`,
+    body: `<p style="margin:0 0 4px;color:#6E6C66;font-size:13px">Invoice ${esc(o.number)}</p><p style="margin:0 0 18px;font-size:28px;font-weight:600;letter-spacing:-.02em">${esc(o.amount)}</p><p style="margin:0 0 20px;color:#6E6C66">Due ${esc(o.due)}</p>${paragraphs(o.message)}`,
+    button: { label: "View invoice", url: o.url },
+  });
+  return { text, html };
+}
+
+export function reminderEmail(o: { brand: string; business: string; customer: string; number: string; left: string; dueLine: string; sender: string; url: string }) {
+  const message = `Hi ${o.customer} team,\n\nA quick reminder that invoice ${o.number} for ${o.left} ${o.dueLine}. The bank details are on the invoice.\n\nThanks,\n${o.sender}`;
+  return {
+    text: `${message}\n\nView invoice: ${o.url}`,
+    html: shell({ brand: o.brand, business: o.business, preheader: `Reminder: ${o.number} for ${o.left}`, body: paragraphs(message), button: { label: "View invoice", url: o.url } }),
+  };
+}
+
+export function claimNotice(o: { customer: string; number: string; amount: string; paidOn: string; reference: string; note: string; url: string }) {
+  const lines = [`${o.customer} says they paid ${o.amount} for invoice ${o.number} on ${o.paidOn}.`, o.reference && `Reference: ${o.reference}`, o.note && `Their note: ${o.note}`, "Check your bank, then confirm it in InVin. Nothing changes until you do."].filter(Boolean).join("\n\n");
+  return {
+    text: `${lines}\n\nOpen the invoice: ${o.url}`,
+    html: shell({ brand: "#1A1916", business: "InVin", preheader: `${o.customer} says they paid ${o.amount}`, body: paragraphs(lines), button: { label: "Review payment", url: o.url } }),
+  };
+}
+
+export function signInCodeEmail(code: string) {
+  const spaced = `${code.slice(0, 3)} ${code.slice(3)}`;
+  return {
+    subject: `${spaced} is your InVin sign-in code`,
+    text: `Your InVin sign-in code is ${spaced}.\n\nIt works for 10 minutes. If you didn't try to sign in, you can ignore this email.`,
+    html: shell({
+      brand: "#1A1916",
+      business: "InVin",
+      preheader: `Your sign-in code is ${spaced}`,
+      body: `<p style="margin:0 0 6px;color:#6E6C66;font-size:13px">Your sign-in code</p><p style="margin:0 0 18px;font-size:34px;font-weight:600;letter-spacing:.12em;font-family:'IBM Plex Mono',Menlo,monospace">${esc(spaced)}</p><p style="margin:0">It works for 10 minutes. If you didn't try to sign in, you can ignore this email.</p>`,
+    }),
+  };
+}
+
+/** Sent to the customer after a payment is recorded. */
+export function receiptEmail(o: { brand: string; business: string; customer: string; number: string; amount: string; paidOn: string; method: string; left: string | null; url: string }) {
+  const status = o.left ? `${o.left} is still left to pay on this invoice.` : `Invoice ${o.number} is now paid in full.`;
+  const message = `Hi ${o.customer},\n\nThanks, we've received your payment of ${o.amount} for invoice ${o.number}.\n\n${status}`;
+  return {
+    subject: `Receipt for ${o.amount} · invoice ${o.number}`,
+    text: `${message}\n\nPaid on ${o.paidOn} by ${o.method.toLowerCase()}.\n\nView the invoice: ${o.url}`,
+    html: shell({
+      brand: o.brand,
+      business: o.business,
+      preheader: `Payment of ${o.amount} received`,
+      body: `<p style="margin:0 0 4px;color:#6E6C66;font-size:13px">Payment received</p><p style="margin:0 0 6px;font-size:28px;font-weight:600;letter-spacing:-.02em">${esc(o.amount)}</p><p style="margin:0 0 20px;color:#6E6C66">${esc(o.paidOn)} · ${esc(o.method)}</p>${paragraphs(message)}`,
+      button: { label: "View invoice", url: o.url },
+    }),
+  };
+}
+
+/** To the business: a recurring series made a draft that's waiting for review. */
+export function draftReadyNotice(o: { number: string; customer: string; amount: string; url: string }) {
+  const text = `Your recurring invoice for ${o.customer} is ready as a draft: ${o.number} for ${o.amount}.\n\nCheck it, change anything you need, then send it.`;
+  return {
+    subject: `Draft ${o.number} for ${o.customer} is ready to review`,
+    text: `${text}\n\nOpen it: ${o.url}`,
+    html: shell({ brand: "#1A1916", business: "InVin", preheader: `${o.number} for ${o.amount} is ready`, body: paragraphs(text), button: { label: "Review draft", url: o.url } }),
+  };
+}

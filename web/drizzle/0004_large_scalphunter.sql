@@ -1,0 +1,1 @@
+ALTER TABLE "workspaces" ADD COLUMN "categories" jsonb DEFAULT '["General"]'::jsonb NOT NULL;

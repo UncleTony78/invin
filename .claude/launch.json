@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "comps",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "4321", "--bind", "127.0.0.1", "--directory", "C:/Users/nwake/OneDrive/Desktop/invin"],
+      "port": 4321
+    },
+    {
+      "name": "web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "C:/Users/nwake/OneDrive/Desktop/invin/web", "run", "dev", "--", "--port", "3000"],
+      "port": 3000
+    }
+  ]
+}

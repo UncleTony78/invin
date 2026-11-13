@@ -1,0 +1,158 @@
+/* InVin domain components: status, money pipeline, activity record, invoice paper */
+@layer components {
+  /* ---------- Status pill: icon + label, colour never alone ---------- */
+  .iv-pill { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 9px 0 7px; border-radius: var(--r-pill); font-size: var(--fs-13); font-weight: 500; white-space: nowrap; transition: filter 140ms ease, opacity 140ms ease; }
+  .iv-pill[data-swap] { filter: blur(2px); opacity: 0.2; }
+  .st-draft { background: var(--st-draft-bg); color: var(--st-draft); }
+  .st-scheduled { background: var(--st-scheduled-bg); color: var(--st-scheduled); }
+  .st-sent { background: var(--st-sent-bg); color: var(--st-sent); }
+  .st-viewed { background: var(--st-viewed-bg); color: var(--st-viewed); }
+  .st-awaiting { background: var(--st-awaiting-bg); color: var(--st-awaiting); }
+  .st-partial { background: var(--st-partial-bg); color: var(--st-partial); }
+  .st-paid { background: var(--st-paid-bg); color: var(--st-paid); }
+  .st-overdue { background: var(--st-overdue-bg); color: var(--st-overdue); }
+  .st-failed, .st-cancelled { background: var(--st-failed-bg); color: var(--st-failed); }
+  .st-skipped { background: var(--st-skipped-bg); color: var(--st-skipped); }
+  .st-queued { background: var(--st-queued-bg); color: var(--st-queued); }
+  .st-upcoming { background: var(--st-upcoming-bg); color: var(--st-upcoming); }
+
+  /* ---------- Money pipeline (signature) ---------- */
+  .iv-bar { display: flex; gap: 3px; height: 14px; width: 100%; }
+  .iv-bar--thin { height: 8px; }
+  .iv-bar-seg { flex: var(--w) 1 0; min-width: 6px; border-radius: 4px; border: 0; padding: 0; cursor: pointer; transition: flex-grow 520ms var(--ease-in-out), opacity 180ms ease; }
+  .iv-bar:hover .iv-bar-seg:not(:hover) { opacity: 0.4; }
+  /* Nothing to show yet: one quiet track, not four full-colour blocks */
+  .iv-bar[data-empty] .iv-bar-seg { background: var(--secondary); pointer-events: none; }
+  .iv-bar[data-empty]:hover .iv-bar-seg { opacity: 1; }
+  .seg-draft { background: repeating-linear-gradient(135deg, var(--line-2) 0 4px, transparent 4px 8px); box-shadow: inset 0 0 0 1px var(--line-2); }
+  .seg-open { background: var(--st-sent); }
+  .seg-overdue { background: #e8890c; }
+  .seg-paid { background: var(--st-paid); }
+  .iv-legend { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-top: 14px; }
+  .iv-legend button { display: block; text-align: left; padding: 8px 10px; margin: -8px -10px; border-radius: var(--r-md); background: none; border: 0; font: inherit; color: inherit; cursor: pointer; transition: background-color var(--m-in); }
+  @media (hover: hover) { .iv-legend button:hover { background: var(--hover); } }
+  .iv-legend .k { display: flex; align-items: center; gap: 7px; color: var(--text-2); font-size: var(--fs-13); }
+  .iv-legend .k i { width: 9px; height: 9px; border-radius: 3px; display: block; }
+  .iv-legend .v { font-size: var(--fs-18); font-weight: 500; margin-top: 4px; letter-spacing: -0.01em; }
+  .iv-legend .n { font-size: var(--fs-12); color: var(--text-2); margin-top: 1px; }
+  @media (max-width: 640px) { .iv-legend { grid-template-columns: 1fr 1fr; } }
+
+  /* ---------- Activity record ---------- */
+  .iv-tl { padding: 8px 0; }
+  .iv-ev { position: relative; padding: 0 0 28px 28px; }
+  .iv-ev::before { content: ""; position: absolute; left: 3px; top: 7px; width: 7px; height: 7px; border-radius: 50%; background: var(--text-3); }
+  .iv-ev[data-hot]::before { background: var(--signal); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .iv-ev::after { content: ""; position: absolute; left: 6px; top: 24px; bottom: 6px; width: 1px; background: var(--line-2); }
+  .iv-ev:last-child::after { display: none; }
+  .iv-ev time { display: block; font-size: var(--fs-13); color: var(--text-2); }
+  .iv-ev-title { font-weight: 500; font-size: var(--fs-15); margin-top: 8px; }
+  .iv-ev-by { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .iv-ev-note { margin-top: 12px; background: var(--surface-2); border-radius: var(--r-md); padding: 10px 12px; font-size: var(--fs-13); line-height: 1.6; max-width: 62ch; }
+  .iv-xd-toggle { display: inline-flex; align-items: center; gap: 6px; margin: 10px 0 0 9px; padding: 2px 6px 2px 18px; border-radius: 6px; color: var(--text-2); font: inherit; font-size: var(--fs-13); position: relative; background: none; border: 0; cursor: pointer; }
+  .iv-xd-toggle::before { content: ""; position: absolute; left: 0; top: -8px; width: 12px; height: 18px; border-left: 1px solid var(--line-2); border-bottom: 1px solid var(--line-2); border-bottom-left-radius: 6px; }
+  .iv-xd-toggle:hover { color: var(--text); }
+  .iv-xd-toggle svg { transition: transform 220ms var(--ease-out); }
+  .iv-xd-toggle[data-panel-open] svg { transform: rotate(180deg); }
+  .iv-xd-panel { height: var(--collapsible-panel-height); overflow: hidden; transition: height 260ms var(--ease-out); }
+  .iv-xd-panel[data-starting-style], .iv-xd-panel[data-ending-style] { height: 0; }
+  .iv-xd-panel dl { margin-top: 10px; background: var(--surface-2); border-radius: var(--r-md); padding: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px 20px; font-size: var(--fs-13); transition: opacity 200ms ease, transform 260ms var(--ease-out), filter 200ms ease; }
+  .iv-xd-panel[data-starting-style] dl, .iv-xd-panel[data-ending-style] dl { opacity: 0; transform: translateY(-6px); filter: blur(2px); }
+  .iv-xd-panel dt { color: var(--text-2); margin-bottom: 3px; }
+  .iv-xd-panel dd { font-weight: 500; display: flex; align-items: center; gap: 7px; }
+
+  /* ---------- Invoice paper: four designs, one renderer ---------- */
+  /* At least one A4 sheet tall, and taller when the items need it (overflow: clip keeps the corners without fixing the height) */
+  .iv-paper { background: #fff; color: #1a1916; border-radius: 6px; box-shadow: var(--shadow-paper); aspect-ratio: 1 / 1.414; position: relative; font-size: var(--pfs, 10px); overflow: clip; line-height: 1.45; container-type: inline-size; view-transition-name: invoice-paper; display: flex; flex-direction: column; }
+  .iv-paper .pad { flex: 1; padding: 7.5% 8%; display: flex; flex-direction: column; }
+  .iv-paper td:first-child { overflow-wrap: anywhere; }
+  .iv-paper .tot div > :last-child { text-align: right; overflow-wrap: anywhere; }
+  /* Very long totals step down instead of running off the page */
+  .iv-paper[data-hero="l"] :is(.t-stacked .band .big, .huge, .due) { font-size: 1.7em; }
+  .iv-paper[data-hero="xl"] :is(.band .big, .huge, .due) { font-size: 1.3em; }
+  .iv-paper[data-hero="l"] .huge { font-size: 2.4em; }
+  .iv-paper[data-hero="xl"] .huge { font-size: 1.8em; }
+  .iv-paper .l { display: block; color: #6e6c66; font-size: 0.82em; margin-bottom: 0.35em; letter-spacing: 0.02em; }
+  .iv-paper .mk { width: 2.4em; height: 2.4em; border-radius: 0.6em; background: var(--brand); color: #fff; display: grid; place-items: center; font-size: 0.82em; font-weight: 600; flex: none; }
+  .iv-paper .biz { display: flex; align-items: center; gap: 0.8em; font-weight: 600; }
+  .iv-paper table { width: 100%; border-collapse: collapse; margin-top: 2.2em; }
+  .iv-paper td, .iv-paper th { padding: 0.8em 0; border-bottom: 1px solid #eeece7; text-align: left; font-weight: 400; vertical-align: top; }
+  .iv-paper th { font-size: 0.82em; color: #6e6c66; }
+  .iv-paper .r { text-align: right; padding-left: 0.9em; white-space: nowrap; }
+  .iv-paper .tot { margin-left: auto; width: 46%; margin-top: 1.2em; line-height: 2; }
+  .iv-paper .tot div { display: flex; justify-content: space-between; }
+  .iv-paper .tot .t { border-top: 1.5px solid #1a1916; margin-top: 0.4em; padding-top: 0.4em; font-weight: 600; font-size: 1.15em; }
+  .iv-paper .bank { display: grid; grid-template-columns: auto 1fr; gap: 0.35em 1.4em; font-size: 0.95em; }
+  .iv-paper .bank dt { color: #6e6c66; }
+  .iv-paper .bank dd { font-family: var(--font-mono); font-size: 0.95em; }
+  .iv-paper .bank dd.sans { font-family: inherit; }
+  .iv-paper .ref { margin-top: 0.7em; font-size: 0.9em; color: #5f5d58; }
+  .iv-paper .ref b { color: #1a1916; font-weight: 600; }
+  .iv-paper .muted { color: #5f5d58; }
+  /* minimal */
+  .t-minimal .ptop { display: flex; justify-content: space-between; align-items: center; }
+  .t-minimal .ptop .ttl { font-size: 0.9em; color: #6e6c66; text-align: right; }
+  .t-minimal .meta { display: grid; grid-template-columns: 1.2fr 1fr 1.1fr; gap: 1.2em; margin-top: 4em; }
+  .t-minimal .due { font-size: 1.9em; font-weight: 500; letter-spacing: -0.02em; line-height: 1.1; }
+  .t-minimal .payb { margin-top: auto; background: #f6f5f2; border-radius: 0.6em; padding: 1.2em 1.4em; display: grid; grid-template-columns: 1.3fr 1fr; gap: 1.6em; }
+  /* classic */
+  .t-classic .head { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 1.6em; border-bottom: 2px solid var(--brand); }
+  .t-classic .head .biz { align-items: flex-start; gap: 0.9em; }
+  .t-classic .head .biz b { font-size: 1.2em; display: block; }
+  .t-classic .head .biz span { color: #5f5d58; font-size: 0.92em; line-height: 1.5; font-weight: 400; }
+  .t-classic .word { font-size: 2.3em; font-weight: 500; letter-spacing: 0.06em; color: var(--brand); text-align: right; line-height: 1; }
+  .t-classic .word + div { text-align: right; font-family: var(--font-mono); color: #5f5d58; margin-top: 0.4em; }
+  .t-classic .meta { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 1.2em; margin-top: 2em; }
+  .t-classic th { background: color-mix(in srgb, var(--brand) 9%, #fff); padding: 0.7em 0.6em; border-bottom: 0; color: #3c3a35; }
+  .t-classic td { padding: 0.8em 0.6em; }
+  .t-classic .tot .t { background: color-mix(in srgb, var(--brand) 9%, #fff); border-top: 0; padding: 0.3em 0.6em; margin: 0.4em -0.6em 0; border-radius: 0.3em; }
+  .t-classic .foot { margin-top: auto; display: grid; grid-template-columns: 1.3fr 1fr; gap: 2em; padding-top: 1.4em; border-top: 1px solid #eeece7; }
+  .t-classic .foot b { display: block; margin-bottom: 0.5em; }
+  /* stacked */
+  .t-stacked .pad { padding: 0; }
+  .t-stacked .band { background: var(--brand); color: #fff; padding: 7% 8% 5.5%; display: flex; justify-content: space-between; align-items: flex-end; }
+  .t-stacked .band .mk { background: rgba(255, 255, 255, 0.18); }
+  .t-stacked .band .ttl { margin-top: 2.2em; font-size: 0.95em; opacity: 0.85; }
+  .t-stacked .band .big { font-size: 2.4em; font-weight: 500; letter-spacing: -0.02em; line-height: 1.05; text-align: right; }
+  .t-stacked .band .big small { display: block; font-size: 0.38em; opacity: 0.85; letter-spacing: 0; font-weight: 400; margin-bottom: 0.4em; }
+  .t-stacked .rows { padding: 0 8% 6%; display: flex; flex-direction: column; flex: 1; }
+  .t-stacked .rw { display: grid; grid-template-columns: 22% 1fr; gap: 1em; padding: 1.3em 0; border-bottom: 1px solid #eeece7; }
+  .t-stacked .rw > .l { margin: 0; padding-top: 0.15em; }
+  .t-stacked .rw table { margin-top: 0; }
+  .t-stacked .rw table tr:last-child td { border-bottom: 0; }
+  .t-stacked .paycard { background: color-mix(in srgb, var(--brand) 8%, #fff); border-radius: 0.6em; padding: 1em 1.2em; }
+  .t-stacked .rw:last-child { border-bottom: 0; margin-top: auto; }
+  /* bold */
+  .t-bold .ptop { display: flex; justify-content: space-between; align-items: flex-start; }
+  .t-bold .huge { font-size: 3.6em; font-weight: 500; letter-spacing: -0.035em; line-height: 1; margin-top: 1.4em; color: var(--brand); }
+  .t-bold .huge + p { margin-top: 0.6em; color: #5f5d58; font-size: 1.05em; }
+  .t-bold .meta { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.2em; margin-top: 2.6em; padding-top: 1.4em; border-top: 1px solid #1a1916; }
+  .t-bold .payb { margin-top: auto; display: grid; grid-template-columns: 1fr 1.3fr; gap: 2em; align-items: start; }
+  .t-bold .payb .bankcard { background: #f6f5f2; padding: 1em 1.2em; border-radius: 0.6em; }
+  /* stamps */
+  .iv-stamp { position: absolute; left: 9%; bottom: 34%; border: 0.26em solid currentColor; font-weight: 600; font-size: 2.3em; letter-spacing: 0.12em; padding: 0.08em 0.45em; border-radius: 0.3em; transform: rotate(-11deg); opacity: 0.9; pointer-events: none; background: rgba(255, 255, 255, 0.75); }
+  .iv-stamp--paid { color: #12713f; }
+  .iv-stamp--cancelled { color: #b42318; }
+  .iv-stamp[data-press] { animation: iv-stamp 300ms cubic-bezier(0.3, 1.35, 0.6, 1) both; }
+  @keyframes iv-stamp { from { opacity: 0; transform: rotate(-11deg) scale(1.18); } to { opacity: 0.9; transform: rotate(-11deg) scale(1); } }
+
+  /* template picker */
+  .iv-tpl { display: flex; gap: 6px; }
+  .iv-tpl button { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 6px 6px 5px; border-radius: var(--r-md); font: inherit; font-size: var(--fs-12); color: var(--text-2); background: none; border: 0; cursor: pointer; }
+  .iv-tpl button svg { width: 34px; height: 44px; border-radius: 3px; background: #fff; box-shadow: 0 0 0 1px var(--line-2); transition: box-shadow 160ms, transform var(--m-in) var(--ease-out); }
+  .iv-tpl button[aria-checked="true"] { color: var(--text); font-weight: 500; }
+  .iv-tpl button[aria-checked="true"] svg { box-shadow: 0 0 0 2px var(--text); }
+  @media (hover: hover) { .iv-tpl button:hover svg { transform: translateY(-1px); } }
+  .iv-swatches { display: flex; gap: 8px; }
+  .iv-swatches button { width: 22px; height: 22px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1); position: relative; border: 0; cursor: pointer; padding: 0; }
+  .iv-swatches button::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; box-shadow: 0 0 0 2px var(--text); opacity: 0; transform: scale(0.85); transition: opacity 140ms, transform 200ms var(--ease-out); }
+  .iv-swatches button[aria-checked="true"]::after { opacity: 1; transform: none; }
+}
+::view-transition-old(invoice-paper), ::view-transition-new(invoice-paper) { animation-duration: 260ms; animation-timing-function: cubic-bezier(0.23, 1, 0.32, 1); }
+::view-transition-old(invoice-paper) { animation-name: iv-paper-out; }
+::view-transition-new(invoice-paper) { animation-name: iv-paper-in; }
+@keyframes iv-paper-out { to { opacity: 0; filter: blur(3px); transform: scale(0.985); } }
+@keyframes iv-paper-in { from { opacity: 0; filter: blur(3px); transform: scale(1.015); } }
+@media (prefers-reduced-motion: reduce) {
+  .iv-bar-seg, .iv-xd-panel { transition: none; }
+  .iv-stamp[data-press] { animation: none; }
+}

@@ -1,0 +1,105 @@
+/* InVin design tokens · v0.2 (Phase 0, flat direction)
+   Reference: user-supplied series page + activity sheet (2026-11-13).
+   Light, flat, quiet. One surface level; elevation only for things that float.
+   Themes: default light, [data-theme="dark"]. */
+
+:root {
+  color-scheme: light;
+
+  /* Brand (logo kit) — tangerine is a signal, not a paint */
+  --brand-tangerine: #FF5A1F;
+  --brand-ink: #16130F;
+
+  /* Surfaces */
+  --canvas: #F2F2EF;          /* rail + app frame */
+  --surface: #FFFFFF;         /* work area */
+  --surface-2: #F7F7F5;       /* inset blocks: notes, execution details, table header */
+  --hover: #F1F1EE;
+  --pressed: #E9E9E5;
+  --selected: #EEF0F6;
+
+  /* Text */
+  --text: #1A1916;            /* 17.4:1 on surface */
+  --text-2: #5F5D58;          /* 6.6:1 on surface, 5.9:1 on canvas — secondary text, timestamps, placeholders */
+  --text-3: #8A8883;          /* icons and dividers only, never text that matters */
+
+  /* Lines */
+  --line: #E7E6E2;
+  --line-2: #D9D8D3;
+
+  /* Actions */
+  --primary: #1A1916;  --primary-text: #FFFFFF;  --primary-hover: #33312C;
+  --secondary: #EFEFEC; --secondary-hover: #E6E6E2;
+  --focus: #FF5A1F;
+  --signal: #FF5A1F;          /* active rail marker, agent spark, focus */
+  --link-underline: #B9B7B1;
+
+  /* Status: tinted background + saturated text/icon (all ≥ 4.5:1) */
+  --st-draft-bg:#F0EFEB;     --st-draft:#55534E;
+  --st-scheduled-bg:#ECEFF6; --st-scheduled:#3F5180;
+  --st-sent-bg:#E8EFFC;      --st-sent:#2453B8;
+  --st-viewed-bg:#E2F3F1;    --st-viewed:#0E6A63;
+  --st-awaiting-bg:#E9ECFB;  --st-awaiting:#3A4AB0;
+  --st-partial-bg:#E4EFFA;   --st-partial:#1D5C9E;
+  --st-paid-bg:#E3F2E8;      --st-paid:#12713F;
+  --st-overdue-bg:#FCEFDD;   --st-overdue:#94470A;
+  --st-failed-bg:#FCE8E6;    --st-failed:#B42318;
+  --st-cancelled-bg:#FCE8E6; --st-cancelled:#B42318;
+  --st-skipped-bg:#EEF0F2;   --st-skipped:#4C5663;
+  --st-queued-bg:#FBE8F1;    --st-queued:#A62C63;
+  --st-upcoming-bg:#EFEEEA;  --st-upcoming:#4F4D48;
+  --agent-bg:#FFEEE5;        --agent:#B23F0E;
+  --accent-soft:#FFF1EA;     --accent-text:#B23F0E;    /* tangerine family, 5.6:1 on white */
+
+  /* Type: IBM Plex (SIL OFL). Mono for invoice numbers, IDs and amounts in tables. */
+  --font-sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  /* Scale ×1.2, fixed rem (product UI) */
+  --fs-12: .75rem; --fs-13: .8125rem; --fs-14: .875rem; --fs-15: .9375rem;
+  --fs-18: 1.125rem; --fs-22: 1.375rem; --fs-28: 1.75rem; --fs-34: 2.125rem;
+
+  /* Space (4-pt) */
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:20px; --s6:24px; --s8:32px; --s10:40px; --s12:48px;
+
+  /* Radius */
+  --r-sm:6px; --r-md:8px; --r-lg:12px; --r-xl:16px; --r-pill:999px;
+
+  /* Elevation — floating layers only */
+  --shadow-pop: 0 0 0 1px rgba(26,25,22,.08), 0 6px 20px -4px rgba(26,25,22,.14);
+  --shadow-sheet: 0 0 0 1px rgba(26,25,22,.06), -16px 0 48px -16px rgba(26,25,22,.22);
+  --shadow-paper: 0 0 0 1px rgba(26,25,22,.05), 0 8px 28px -10px rgba(26,25,22,.18);
+  --scrim: rgba(26,25,22,.16);
+
+  /* Motion (emil-design-eng + apple-design + tasteskill hover layer) */
+  --m-in:140ms; --m-out:200ms; --m-press:90ms;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --d-press:120ms; --d-tooltip:125ms; --d-menu:160ms; --d-expand:220ms; --d-sheet:300ms; --d-exit:200ms;
+
+  /* Layout */
+  --rail: 64px; --side: 248px; --topbar: 56px;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --canvas:#0E0E0D; --surface:#161615; --surface-2:#1C1C1A; --hover:#20201E; --pressed:#2A2A27; --selected:#1F2230;
+  --text:#EFEEEA; --text-2:#A9A7A0; --text-3:#6F6D67; --line:#272725; --line-2:#33332F;
+  --primary:#EFEEEA; --primary-text:#161615; --primary-hover:#FFFFFF; --secondary:#232321; --secondary-hover:#2C2C29;
+  --link-underline:#55534E;
+  --st-draft-bg:#262522; --st-draft:#C8C6BF; --st-scheduled-bg:#1D2233; --st-scheduled:#AEBBE0;
+  --st-sent-bg:#16233F; --st-sent:#93B3F5; --st-viewed-bg:#10302D; --st-viewed:#7ED6CC;
+  --st-awaiting-bg:#1C2140; --st-awaiting:#A9B3F5; --st-partial-bg:#132A42; --st-partial:#8EC0F0;
+  --st-paid-bg:#10301E; --st-paid:#74D6A0; --st-overdue-bg:#36230F; --st-overdue:#F2AE6A;
+  --st-failed-bg:#3A1714; --st-failed:#F59A8F; --st-cancelled-bg:#3A1714; --st-cancelled:#F59A8F;
+  --st-skipped-bg:#22262B; --st-skipped:#B3BCC7; --st-queued-bg:#3A1828; --st-queued:#F39AC2;
+  --st-upcoming-bg:#262522; --st-upcoming:#C8C6BF; --agent-bg:#3A1E12; --agent:#FFA27A; --accent-soft:#2E1A10; --accent-text:#FFA27A;
+  --shadow-pop: 0 0 0 1px rgba(255,255,255,.08), 0 8px 24px -4px rgba(0,0,0,.6);
+  --shadow-sheet: 0 0 0 1px rgba(255,255,255,.07), -16px 0 48px -16px rgba(0,0,0,.7);
+  --shadow-paper: 0 0 0 1px rgba(255,255,255,.05), 0 12px 32px -10px rgba(0,0,0,.6);
+  --scrim: rgba(0,0,0,.45);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --d-menu:0ms; --d-expand:0ms; --d-sheet:160ms; }
+}
