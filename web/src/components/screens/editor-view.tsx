@@ -349,7 +349,10 @@ export function EditorView({
             <TemplatePicker value={template} onChange={(t) => withTransition(() => setTemplate(t))} brand={brand} />
             <ColourSwatches colours={BRAND_COLOURS} value={brand} onChange={setBrand} />
           </div>
-          <InvoicePaper invoice={preview} business={business} account={account ? { ...account, currency: account.currency as Currency } : { id: "", currency: cur, bank: "No bank account", rows: [] }} template={template} brand={brand} fontSize={9.4} />
+<div className="prev-wrap" data-invalid={tooBig ? true : undefined}>
+            <InvoicePaper invoice={preview} business={business} account={account ? { ...account, currency: account.currency as Currency } : { id: "", currency: cur, bank: "No bank account", rows: [] }} template={template} brand={brand} fontSize={9.4} />
+            {tooBig && <p className="prev-note"><Icon name="alert" />Fix the amount to see the preview</p>}
+          </div>
           <p className="mt-3.5 text-center text-[12px] text-text-2">{series ? `Each invoice in the series will look like this, with its own number and dates.` : `This is exactly what ${customer.name} will see and download.`}</p>
         </div>
       </div>

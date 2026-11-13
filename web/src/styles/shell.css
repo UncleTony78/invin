@@ -450,3 +450,10 @@
   @keyframes skip-in { from { opacity: 0.4; } }
 }
 @media (prefers-reduced-motion: reduce) { .copy-btn[data-copied] svg { animation: none; } }
+@layer components {
+  /* An invalid amount can't be previewed honestly, so the paper steps back and says why */
+  .prev-wrap { position: relative; }
+  .prev-wrap .iv-paper { transition: opacity 200ms ease, filter 200ms ease; }
+  .prev-wrap[data-invalid] .iv-paper { opacity: 0.35; filter: blur(1.5px) saturate(0.4); }
+  .prev-note { position: absolute; top: 40%; left: 50%; translate: -50% 0; display: flex; gap: 8px; align-items: center; padding: 10px 14px; border-radius: var(--r-md); background: var(--surface); box-shadow: var(--shadow-pop); font-size: var(--fs-13); color: var(--st-failed); white-space: nowrap; animation: cat-in 200ms var(--ease-out); }
+}
