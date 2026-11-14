@@ -1,0 +1,96 @@
+/* InVin home: the motion layer. Strong ease-out for arrivals, springs in JS for pointer follow. */
+:root { --ease-out-x: cubic-bezier(0.23, 1, 0.32, 1); --ease-io-x: cubic-bezier(0.77, 0, 0.175, 1); }
+
+/* ---------- the living ground ---------- */
+.hm-hero { position: relative; isolation: isolate; }
+.hm-currents { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; display: block; pointer-events: none;
+  -webkit-mask-image: linear-gradient(90deg, rgba(0,0,0,.18) 0%, rgba(0,0,0,.4) 38%, #000 62%);
+          mask-image: linear-gradient(90deg, rgba(0,0,0,.18) 0%, rgba(0,0,0,.4) 38%, #000 62%); }
+.hm-hero .hero__media.hm-stage::before { opacity: .35; }
+
+/* ---------- the hero: a bigger, tighter headline ---------- */
+.hm-hero h1 { font-size: clamp(48px, 5.4vw, 88px); line-height: 0.98; letter-spacing: -0.045em; max-width: 11ch; }
+.hm-hero .hero__lead { max-width: 44ch; }
+.hm-arrive .hm-w { display: inline-block; overflow: hidden; vertical-align: top; padding-bottom: 0.08em; margin-bottom: -0.08em; }
+.hm-arrive .hm-w > span { display: inline-block; transform: translateY(105%); filter: blur(8px); opacity: 0;
+  transition: transform 900ms var(--ease-out-x), filter 700ms ease, opacity 500ms ease; transition-delay: calc(80ms + var(--i) * 55ms); }
+.hm-arrived .hm-w > span { transform: none; filter: none; opacity: 1; }
+.hm-arrive .hm-hero .hero__kicker, .hm-arrive .hm-hero .hero__lead, .hm-arrive .hm-hero .btn-row, .hm-arrive .hm-hero .hm-stage { opacity: 0; transform: translateY(18px); filter: blur(6px);
+  transition: opacity 700ms ease, transform 900ms var(--ease-out-x), filter 700ms ease; }
+.hm-arrive .hm-hero .hero__kicker { transition-delay: 0ms; }
+.hm-arrive .hm-hero .hero__lead { transition-delay: 420ms; }
+.hm-arrive .hm-hero .btn-row { transition-delay: 520ms; }
+.hm-arrive .hm-hero .hm-stage { transition-delay: 300ms; transform: translateY(36px) scale(.98); }
+.hm-arrived .hm-hero .hero__kicker, .hm-arrived .hm-hero .hero__lead, .hm-arrived .hm-hero .btn-row, .hm-arrived .hm-hero .hm-stage { opacity: 1; transform: none; filter: none; }
+/* the kicker's dot breathes, it is live */
+.hm-hero .hero__kicker .dot { position: relative; }
+.hm-hero .hero__kicker .dot::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; border: 1.5px solid var(--accent); opacity: 0; animation: hm-ping 2.4s var(--ease-out-x) infinite; }
+@keyframes hm-ping { 0% { transform: scale(.5); opacity: .8; } 70%, 100% { transform: scale(1.6); opacity: 0; } }
+
+/* ---------- sections arrive as they scroll in ---------- */
+.fx .rv { opacity: 0; transform: translateY(28px); filter: blur(6px);
+  transition: opacity 700ms ease var(--d, 0ms), transform 900ms var(--ease-out-x) var(--d, 0ms), filter 700ms ease var(--d, 0ms); }
+.fx .rv.is-in { opacity: 1; transform: none; filter: none; }
+
+/* ---------- a light that follows the pointer ---------- */
+.hm-lit { position: relative; }
+.hm-lit::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0;
+  background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 50%), rgba(255, 255, 255, 0.10), transparent 60%);
+  transition: opacity 300ms ease; z-index: 2; }
+.hm-lit:hover::after { opacity: 1; }
+.btn--primary.hm-lit::after { background: radial-gradient(120px circle at var(--mx, 50%) var(--my, 50%), rgba(255, 255, 255, 0.35), transparent 70%); mix-blend-mode: soft-light; }
+.hm-design .iv-paper.hm-lit::after { background: radial-gradient(520px circle at var(--mx, 50%) var(--my, 50%), rgba(255, 220, 190, 0.18), transparent 60%); }
+@media (hover: hover) and (pointer: fine) {
+  #features .card, #team .card { transition: transform 260ms var(--ease-out-x); }
+  #features .card:hover, #team .card:hover { transform: translateY(-3px); }
+  #features .card .panel, #team .card .panel { transition: transform 600ms var(--ease-out-x); }
+  #features .card:hover .panel, #team .card:hover .panel { transform: scale(1.012); }
+}
+
+/* ---------- design pills: one highlight that slides ---------- */
+.hm-picks { position: relative; isolation: isolate; }
+.hm-pick-ind { position: absolute; left: 0; top: 0; border-radius: 999px; background: var(--ink); z-index: -1;
+  transition: transform 380ms var(--ease-out-x), width 380ms var(--ease-out-x), height 380ms var(--ease-out-x); }
+.hm-picks .hm-pick[aria-checked="true"] { background: transparent; color: var(--bg); transition: color 200ms ease 60ms; }
+.hm-design .hm-paper { transition: transform 500ms var(--ease-out-x); }
+.hm-swatches button { transition: transform 160ms var(--ease-out-x), box-shadow 200ms ease; }
+@media (hover: hover) and (pointer: fine) { .hm-swatches button:hover { transform: scale(1.12); } }
+
+/* ---------- nav: progress line, frosted once scrolled ---------- */
+header.nav { transition: background-color 300ms ease, backdrop-filter 300ms ease; }
+header.nav[data-scrolled] { background: rgba(13, 12, 11, 0.72); -webkit-backdrop-filter: blur(18px) saturate(160%); backdrop-filter: blur(18px) saturate(160%); }
+.hm-progress { position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--accent); transform: scaleX(0); transform-origin: 0 50%; pointer-events: none; }
+@media (prefers-reduced-transparency: reduce) { header.nav[data-scrolled] { background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; } }
+
+/* ---------- the trades band ---------- */
+.hm-band { padding: 28px 0 36px; border-block: 1px solid var(--line, rgba(243,239,232,.12)); overflow: hidden; background: var(--bg); }
+.hm-band__lead { width: min(100% - 2 * var(--gut, 80px), 1280px); margin: 0 auto 18px; font-size: 13px; font-weight: 500; color: var(--muted); }
+.hm-band__view { display: flex; width: max-content; animation: hm-marquee 46s linear infinite; }
+.hm-band:hover .hm-band__view, .hm-band:focus-within .hm-band__view, .hm-band.is-still .hm-band__view { animation-play-state: paused; }
+.hm-band__track { display: flex; gap: 56px; padding-right: 56px; margin: 0; list-style: none; }
+.hm-band__track li { display: inline-flex; align-items: center; gap: 14px; font-size: clamp(22px, 2.4vw, 34px); font-weight: 500; letter-spacing: -0.02em; color: var(--ink); white-space: nowrap; }
+.hm-band__track li::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; }
+@keyframes hm-marquee { to { transform: translateX(-50%); } }
+
+/* ---------- the close: the living ground behind, a giant wordmark ---------- */
+.hm-close { position: relative; isolation: isolate; overflow: hidden; }
+.hm-currents--close { -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,.5), #000 60%); mask-image: linear-gradient(180deg, rgba(0,0,0,.5), #000 60%); }
+.hm-close .closing__cta h2 { font-size: clamp(48px, 6vw, 104px); line-height: 0.96; letter-spacing: -0.045em; max-width: 12ch; }
+.hm-wordmark { margin: 48px 0 0; font-size: clamp(120px, 24vw, 380px); line-height: 0.8; font-weight: 600; letter-spacing: -0.07em; color: transparent;
+  -webkit-text-stroke: 1px rgba(243, 239, 232, 0.16); user-select: none; white-space: nowrap; overflow: hidden; }
+@media (hover: hover) and (pointer: fine) { .hm-wordmark { transition: -webkit-text-stroke-color 600ms ease, color 600ms ease; } .hm-close:hover .hm-wordmark { -webkit-text-stroke-color: rgba(255, 90, 31, 0.5); } }
+
+/* ---------- buttons: the arrow leads, the press is felt ---------- */
+.btn { transition-property: transform, background-color, box-shadow, color; }
+.btn--primary { box-shadow: 0 0 0 0 rgba(255, 90, 31, 0); }
+@media (hover: hover) and (pointer: fine) { .btn--primary:hover { box-shadow: 0 10px 30px -10px rgba(255, 90, 31, 0.6); } }
+
+@media (max-width: 639px) {
+  .hm-currents { -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,.25), #000 70%); mask-image: linear-gradient(180deg, rgba(0,0,0,.25), #000 70%); }
+  .hm-band__track li { font-size: 22px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hm-band__view { animation: none; }
+  .hm-hero .hero__kicker .dot::after { animation: none; }
+  .fx .rv { opacity: 1; transform: none; filter: none; transition: none; }
+}

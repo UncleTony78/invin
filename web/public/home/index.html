@@ -43,6 +43,8 @@
 <link rel="modulepreload" href="/home/assets/moments/lib.js">
 <link rel="modulepreload" href="/home/assets/moments/counter-rolls/moment.js">
 <link rel="stylesheet" href="/home/home.css">
+<link rel="stylesheet" href="/home/fx.css">
+<script>document.documentElement.classList.add("fx")</script>
 </head>
 <body>
 <!-- type: software (invoicing app; site-kind software)
@@ -95,9 +97,10 @@
 </header>
 
 <main id="top">
-  <section class="hero hero--split bg-topglow" aria-labelledby="hero-h">
+  <section class="hero hero--split hm-hero" aria-labelledby="hero-h">
+    <canvas class="hm-currents" data-currents data-seed="1729" aria-hidden="true"></canvas>
     <div class="wrap"><div class="hero-text grid hero__grid">
-      <div class="hero__text span-5">
+      <div class="hero__text span-6 hm-hero-text">
         <p class="hero__kicker"><span class="dot" aria-hidden="true"></span>9 invoice designs, 4 currencies</p>
         <h1 id="hero-h">Invoicing for freelancers and small studios</h1>
         <p class="hero__lead">Send a branded invoice in a minute. InVin tells you when it's opened, reminds late payers and sends the receipt once you're paid.</p>
@@ -135,6 +138,11 @@
       </div>
     </div></div>
   </section>
+
+  <div class="hm-band" aria-label="Who bills with InVin">
+    <p class="hm-band__lead">Built for people who bill for their work</p>
+    <div class="hm-band__view"><ul class="hm-band__track"><li>Designers</li><li>Photographers</li><li>Developers</li><li>Writers</li><li>Illustrators</li><li>Video editors</li><li>Consultants</li><li>Studios</li><li>Architects</li><li>Musicians</li><li>Translators</li><li>Coaches</li></ul><ul class="hm-band__track" aria-hidden="true"><li>Designers</li><li>Photographers</li><li>Developers</li><li>Writers</li><li>Illustrators</li><li>Video editors</li><li>Consultants</li><li>Studios</li><li>Architects</li><li>Musicians</li><li>Translators</li><li>Coaches</li></ul></div>
+  </div>
 
   <section class="sc" id="product" data-big-scene="parts-lock-into-the-whole" data-big-scene-opts='{"hold": 1}' style="--h: 1" aria-labelledby="pl-h">
     <div class="sc__stage">
@@ -342,7 +350,8 @@
   </section>
 </main>
 
-<footer class="footer closing footer--dark" id="contact" aria-labelledby="close-h">
+<footer class="footer closing footer--dark hm-close" id="contact" aria-labelledby="close-h">
+  <canvas class="hm-currents hm-currents--close" data-currents data-seed="88" aria-hidden="true"></canvas>
   <div class="wrap">
     <div class="closing__cta close--type">
       <div class="section-head">
@@ -361,6 +370,7 @@
         <div class="span-2 footer__col"><h4>Customers</h4><ul><li><a href="#pay">Customer page</a></li><li><a href="#team">Team</a></li></ul></div>
         <div class="span-2 footer__col"><h4>Account</h4><ul><li><a href="/sign-in">Sign in</a></li><li><a href="#faq">Questions</a></li></ul></div>
       </div>
+      <p class="hm-wordmark" aria-hidden="true">InVin</p>
       <div class="footer__legal"><span>&copy; 2026 InVin</span></div>
     </div>
   </div>
@@ -380,5 +390,6 @@
 <script type="module" src="/home/assets/layout/layout.js"></script>
 <script type="module" src="/home/assets/scenes/scenes.js"></script>
 <script type="module" src="/home/home.js"></script>
+<script type="module" src="/home/fx.js"></script>
 </body>
 </html>
