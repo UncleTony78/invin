@@ -1,0 +1,37 @@
+{
+  "voiceSettings": { "stability": 0.45, "similarity_boost": 0.8, "style": 0.15, "use_speaker_boost": true, "speed": 0.97 },
+  "vo": [
+    { "id": "hook", "text": "You finished the work three weeks ago. You're still waiting to get paid." },
+    { "id": "meet", "text": "Meet InVin." },
+    { "id": "headline", "text": "Invoicing for freelancers and small studios." },
+    { "id": "build", "text": "Make a branded invoice in a minute. Your customer's currency and terms fill in for you." },
+    { "id": "life", "text": "Send it, see the moment it's opened, and get paid by bank transfer." },
+    { "id": "designs", "text": "Pick from nine designs, in your colours." },
+    { "id": "auto", "text": "InVin sends the polite reminders, and the receipt the minute you're paid." },
+    { "id": "figures", "text": "Four currencies. Your whole team. Your own email domain." },
+    { "id": "end", "text": "InVin. Send your first invoice today." },
+    { "id": "v_a_hook", "text": "Stop chasing invoices." },
+    { "id": "v_a_body", "text": "InVin sends polite reminders before and after the due date, and stops the moment you're paid." },
+    { "id": "v_b_hook", "text": "Your invoice could look like this. Or this. Or this." },
+    { "id": "v_b_body", "text": "Nine designs, your colours, one click." },
+    { "id": "v_c_hook", "text": "Know the second your client opens your invoice." },
+    { "id": "v_c_body", "text": "Sent. Opened. Paid. And the receipt goes out by itself." },
+    { "id": "v_end", "text": "InVin. Send your first invoice today." }
+  ],
+  "sfx": [
+    { "id": "whoosh", "text": "soft airy whoosh transition, subtle, clean, short", "seconds": 1.0 },
+    { "id": "thock", "text": "single soft low wooden thock, UI click, dry", "seconds": 0.5 },
+    { "id": "tick", "text": "light single mechanical keyboard key tap, crisp, quiet", "seconds": 0.5 },
+    { "id": "send", "text": "quick paper swoosh of an email being sent, light, modern UI", "seconds": 1.0 },
+    { "id": "chime", "text": "gentle two-note notification chime, warm, modern phone", "seconds": 1.2 },
+    { "id": "stamp", "text": "rubber stamp pressed hard onto paper on a wooden desk, satisfying thump", "seconds": 0.8 },
+    { "id": "pop", "text": "tiny soft UI pop for a notification appearing, subtle", "seconds": 0.5 },
+    { "id": "slide", "text": "sheet of paper sliding quickly across a desk, short", "seconds": 0.7 },
+    { "id": "click", "text": "clean soft button click, premium app UI", "seconds": 0.5 },
+    { "id": "room", "text": "quiet late night home office room tone, faint clock ticking, no voices", "seconds": 6 }
+  ],
+  "music": [
+    { "id": "film", "seconds": 46, "prompt": "Warm minimal electronic underscore for a fintech product launch film, about 100 BPM, soft felt piano and a muted pluck, gentle sidechained pad, starts sparse and intimate, lifts with light drums around the tenth second, steady confident middle, resolves warmly with a clean ending. Instrumental, no vocals." },
+    { "id": "social", "seconds": 20, "prompt": "Punchy minimal electronic loop for a short social video, about 104 BPM, tight kick, muted pluck melody, warm bass, bright and confident, clean ending at 20 seconds. Instrumental, no vocals." }
+  ]
+}
