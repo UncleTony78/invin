@@ -2,12 +2,14 @@ import { AppShell } from "@/components/shell/app-shell";
 import { listInvoices, listPins } from "@/server/queries";
 import { listMemberships, requireSession, requireUser } from "@/server/session";
 import { unreadCount } from "@/server/notification-actions";
+import { kickDueWork } from "@/server/kick";
 
 /* Signed-in area: every page reads live workspace data. */
 export const dynamic = "force-dynamic";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   const session = await requireSession();
+  kickDueWork();
   const user = await requireUser();
   const [rows, pins, unread, mine] = await Promise.all([listInvoices(session), listPins(session), unreadCount(), listMemberships(user.id)]);
   return (

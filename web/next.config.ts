@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
      standard (non Cache Components) model and cache explicitly where it pays off. */
   // Keep the dev-only Next badge off the sidebar's account row
   devIndicators: { position: "bottom-right" },
-  serverExternalPackages: ["@electric-sql/pglite", "puppeteer-core"],
+  serverExternalPackages: ["@electric-sql/pglite", "puppeteer-core", "@sparticuz/chromium", "pg"],
   turbopack: {
     rules: {
       "*.css": {

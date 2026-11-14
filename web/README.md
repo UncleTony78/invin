@@ -44,6 +44,25 @@ Email summaries: each person picks off, daily or weekly (Monday 8am); quiet peri
 
 Next: online payments through a provider (Paystack or Stripe).
 
+## Going live (Vercel + Neon)
+
+The app runs the same way in production; only the environment changes.
+
+1. **Database:** create a Neon project (or add the Neon integration from the Vercel Marketplace, which fills in
+   `DATABASE_URL` and `DATABASE_URL_UNPOOLED`). Production starts empty: the first person to sign in sets up their workspace.
+2. **Vercel project:** import the GitHub repo and set **Root Directory** to `web`. `vercel.json` runs
+   `npm run vercel-build`, which applies database migrations, then builds.
+3. **Environment variables** (Project > Settings > Environment Variables), see `.env.example`:
+   `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `BETTER_AUTH_SECRET` (new random value), `APP_URL` (your site address),
+   `RESEND_API_KEY`, `EMAIL_FROM` (a sender on a domain verified in Resend), `CRON_SECRET`.
+   Leave `CHROME_PATH` and `EMAIL_REDIRECT_TO` unset.
+4. **Background work:** Vercel Cron calls `/api/cron` daily (08:00 UTC). While people use the app it also nudges
+   the work along every couple of minutes. For receipts and reminders on time even when nobody's signed in, point a free
+   cron service at `<APP_URL>/api/cron` every 5 minutes with `Authorization: Bearer <CRON_SECRET>`.
+5. **PDFs** use a serverless Chrome (`@sparticuz/chromium`) on Vercel automatically.
+
+Migrations by hand: `DATABASE_URL=... npm run db:migrate`. Locally, `npm run db:migrate` updates the PGlite database without touching data.
+
 ## Component library (Phase 0)
 
 Live reference: **/components**. Every example on that page is interactive.
