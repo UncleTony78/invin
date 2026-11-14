@@ -17,7 +17,10 @@ const root = document.documentElement;
 
 /* ---------- the living ground ---------- */
 document.querySelectorAll("canvas[data-currents]").forEach((c) => {
-  mount(c, { seed: +c.dataset.seed || 1729, density: c.classList.contains("hm-currents--close") ? 0.8 : 1 });
+  const text = c.dataset.text;
+  mount(c, text
+    ? { seed: +c.dataset.seed, text, density: 5, maxParts: 2400, fade: 0.02, settle: 110, glow: 4, accentRate: 0.2, line: 1.6, stack: 1 }
+    : { seed: +c.dataset.seed || 1729, density: c.classList.contains("hm-currents--close") ? 0.8 : 1.15 });
 });
 
 /* ---------- the hero arrives ---------- */
@@ -38,7 +41,7 @@ if (!reduce && "IntersectionObserver" in window) {
     "#designs .hm-picks", "#designs .hm-swatches", "#designs .hm-rows li", "#designs .hm-design",
     "#pay .hm-rows li", "#pay .hm-pay-frame",
     "#faq .faq__item",
-    "footer.closing .closing__cta > *", "footer.closing .closing__links",
+    ".hm-foot-cta > *", ".hm-foot-grid > *",
   ];
   const els = document.querySelectorAll(groups.join(","));
   const io = new IntersectionObserver((entries) => {
@@ -151,4 +154,44 @@ bandBtn?.addEventListener("click", () => {
   band.classList.toggle("is-paused", on);
   bandBtn.setAttribute("aria-pressed", String(on));
   bandBtn.setAttribute("aria-label", on ? "Play the list of trades" : "Pause the list of trades");
+});
+
+/* ---------- the statement lights up word by word as you scroll ---------- */
+const scrub = document.querySelector("[data-scrub]");
+if (scrub) {
+  const walk = (node) => {
+    for (const n of [...node.childNodes]) {
+      if (n.nodeType === 3) {
+        const frag = document.createDocumentFragment();
+        n.textContent.split(/(\s+)/).forEach((t) => {
+          if (!t.trim()) { frag.append(t); return; }
+          const sp = document.createElement("span"); sp.className = "hm-sw"; sp.textContent = t; frag.append(sp);
+        });
+        n.replaceWith(frag);
+      } else if (n.nodeType === 1) walk(n);
+    }
+  };
+  walk(scrub);
+  const words = [...scrub.querySelectorAll(".hm-sw")];
+  if (reduce) words.forEach((w) => w.classList.add("is-lit"));
+  else {
+    const sec = scrub.closest("section");
+    let ticking = false;
+    const update = () => {
+      ticking = false;
+      const r = sec.getBoundingClientRect();
+      // lit from the moment the text rises into view until it is two thirds up the screen
+      const p = Math.min(1, Math.max(0, (innerHeight * 0.85 - r.top) / (r.height * 0.75)));
+      const n = Math.round(p * words.length);
+      words.forEach((w, i) => w.classList.toggle("is-lit", i < n));
+    };
+    addEventListener("scroll", () => { if (!ticking) { ticking = true; requestAnimationFrame(update); } }, { passive: true });
+    update();
+  }
+}
+
+/* ---------- back to top: a smooth, short ride ---------- */
+document.querySelector(".hm-totop")?.addEventListener("click", (e) => {
+  e.preventDefault();
+  scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
 });

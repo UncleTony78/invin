@@ -39,8 +39,12 @@ function makeNoise(rand) {
 }
 
 export function mount(canvas, o = {}) {
-  const opt = { seed: 1729, density: 1, accent: "#ff5a1f", ink: "243,239,232", bg: "13,12,11", fade: 0.035, settle: 150, ...o };
-  const ctx = canvas.getContext("2d", { alpha: false });
+  const opt = { seed: 1729, density: 1, accent: "#ff5a1f", ink: "243,239,232", bg: "13,12,11", fade: 0.035, settle: 150, glow: 1, accentRate: 0.03, ...o };
+  // With opt.text the currents are drawn off screen, then shown only inside the letters
+  const vctx = canvas.getContext("2d", { alpha: !!opt.text });
+  const buf = opt.text ? document.createElement("canvas") : null;
+  const ctx = buf ? buf.getContext("2d", { alpha: true }) : vctx;
+  let font = "", ty = 0;
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   let W = 0, H = 0, dpr = 1, rulings = [], parts = [], raf = 0, running = false, frame = 0;
   let rand = mulberry32(opt.seed), noise = makeNoise(rand);
@@ -52,13 +56,22 @@ export function mount(canvas, o = {}) {
     W = Math.max(1, Math.round(r.width * dpr));
     H = Math.max(1, Math.round(r.height * dpr));
     canvas.width = W; canvas.height = H;
-    ctx.fillStyle = `rgb(${opt.bg})`;
-    ctx.fillRect(0, 0, W, H);
+    if (buf) {
+      buf.width = W; buf.height = H;
+      let fs = H * 0.98;
+      vctx.font = `600 ${fs}px "IBM Plex Sans", sans-serif`;
+      const w = vctx.measureText(opt.text).width;
+      fs = Math.min(fs, fs * (W * 0.985) / w);
+      font = `600 ${fs}px "IBM Plex Sans", sans-serif`;
+      ty = H * 0.5 + fs * 0.36;
+    }
+    if (buf) ctx.clearRect(0, 0, W, H);
+    else { ctx.fillStyle = `rgb(${opt.bg})`; ctx.fillRect(0, 0, W, H); }
     // the staves of a ledger page, on the upper half; twins mirror them onto the lower half
     const gap = 22 * dpr;
     rulings = [];
     for (let y = gap; y < H / 2 - gap * 0.5; y += gap) rulings.push(y);
-    const n = Math.min(900, Math.round((W * H) / (dpr * dpr * 4200) * opt.density));
+    const n = Math.min(opt.maxParts ?? 900, Math.round((W * H) / (dpr * dpr * 4200) * opt.density));
     rand = mulberry32(opt.seed); noise = makeNoise(rand);
     parts = Array.from({ length: n }, () => spawn(true));
   }
@@ -72,7 +85,7 @@ export function mount(canvas, o = {}) {
       age: anywhere ? rand() * opt.settle : 0,
       life: opt.settle * (1.6 + rand() * 1.6),
       ruling,
-      accent: rand() < 0.03,
+      accent: rand() < opt.accentRate,
       jitter: (rand() - 0.5) * 6 * dpr, // the twin is never a perfect mirror
       px: 0, py: 0,
     };
@@ -80,11 +93,19 @@ export function mount(canvas, o = {}) {
 
   function step(t) {
     // the trails fade slowly instead of clearing, so density builds where currents converge
-    ctx.fillStyle = `rgba(${opt.bg},${opt.fade})`;
-    ctx.fillRect(0, 0, W, H);
+    if (buf) {
+      // a transparent layer fades by erasing, so only the light lands inside the letters
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.fillStyle = `rgba(0,0,0,${opt.fade})`;
+      ctx.fillRect(0, 0, W, H);
+      ctx.globalCompositeOperation = "source-over";
+    } else {
+      ctx.fillStyle = `rgba(${opt.bg},${opt.fade})`;
+      ctx.fillRect(0, 0, W, H);
+    }
     ptr.k += (ptr.target - ptr.k) * 0.06; // spring-like ease of the pointer's pull
     const sc = 0.0011 / dpr, z = t * 0.00005;
-    ctx.lineWidth = 1 * dpr;
+    ctx.lineWidth = (opt.line ?? 1) * dpr;
     ctx.lineCap = "round";
     for (const p of parts) {
       p.px = p.x; p.py = p.y;
@@ -107,7 +128,7 @@ export function mount(canvas, o = {}) {
         ctx.globalAlpha = Math.min(0.85, 0.18 + v * 0.32);
       } else {
         ctx.strokeStyle = `rgb(${opt.ink})`;
-        ctx.globalAlpha = 0.07 + Math.min(0.16, v * 0.07);
+        ctx.globalAlpha = Math.min(0.9, (0.07 + Math.min(0.16, v * 0.07)) * opt.glow);
       }
       ctx.beginPath();
       ctx.moveTo(p.px, p.py); ctx.lineTo(p.x, p.y);
@@ -119,19 +140,35 @@ export function mount(canvas, o = {}) {
     ctx.globalAlpha = 1;
   }
 
-  function loop(t) { step(t); frame++; raf = requestAnimationFrame(loop); }
+  function compose() {
+    if (!buf) return;
+    vctx.globalCompositeOperation = "source-over";
+    vctx.clearRect(0, 0, W, H);
+    vctx.font = font; vctx.textAlign = "center"; vctx.textBaseline = "alphabetic";
+    vctx.fillStyle = "rgb(30,18,12)"; // opaque, so the light drawn atop it keeps its full strength
+    vctx.fillText(opt.text, W / 2, ty);
+    vctx.globalCompositeOperation = "source-atop";
+    // the light builds up inside the letters, so the streams glow rather than grey out
+    for (let k = 0; k < (opt.stack ?? 1); k++) vctx.drawImage(buf, 0, 0);
+    vctx.globalCompositeOperation = "source-over";
+    vctx.lineWidth = 1.2 * dpr;
+    vctx.strokeStyle = "rgba(243,239,232,0.22)";
+    vctx.strokeText(opt.text, W / 2, ty);
+  }
+  function loop(t) { step(t); compose(); frame++; raf = requestAnimationFrame(loop); }
   function start() { if (running || reduce) return; running = true; raf = requestAnimationFrame(loop); }
   function stop() { running = false; cancelAnimationFrame(raf); }
 
   size();
-  if (reduce) { for (let i = 0; i < 420; i++) step(i * 16); } // a settled still, nothing moving
+  if (reduce) { for (let i = 0; i < 420; i++) step(i * 16); compose(); } // a settled still, nothing moving
+  if (buf && document.fonts) document.fonts.load(`600 100px "IBM Plex Sans"`).then(() => document.fonts.ready).then(() => { size(); if (reduce) { for (let i = 0; i < 420; i++) step(i * 16); } compose(); });
   let inView = false;
   const io = new IntersectionObserver(([e]) => { inView = e.isIntersecting; inView && !document.hidden ? start() : stop(); }, { rootMargin: "120px" });
   io.observe(canvas);
   const vis = () => (document.hidden || !inView ? stop() : start());
   document.addEventListener("visibilitychange", vis);
   let rt = 0;
-  const ro = new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(() => { size(); if (reduce) for (let i = 0; i < 420; i++) step(i * 16); }, 120); });
+  const ro = new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(() => { size(); if (reduce) for (let i = 0; i < 420; i++) step(i * 16); compose(); }, 120); });
   ro.observe(canvas);
   const host = canvas.parentElement;
   const move = (e) => {

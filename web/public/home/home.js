@@ -81,9 +81,24 @@ const swatches = document.querySelector('[data-swatches]');
 if (design && picks && labels.length) {
   let tpl = 'editorial';
   let brand = '#0E5A52';
-  const render = () => {
-    put(design, tpl, brand);
-    design.animate?.([{ opacity: 0.4, filter: 'blur(3px)', transform: 'scale(0.992)' }, { opacity: 1, filter: 'blur(0)', transform: 'none' }], { duration: still() ? 0 : 260, easing: 'cubic-bezier(.2,.8,.2,1)' });
+  /* The page turns: the old design folds away on its spine, the new one swings in. Interruptible:
+     a second click mid-turn cancels the running turn and starts from where the page is. */
+  let turning = null;
+  const render = (first = false) => {
+    if (first || still() || !design.animate) { put(design, tpl, brand); return; }
+    turning?.cancel();
+    const out = design.animate(
+      [{ transform: 'perspective(1600px) rotateY(0deg)', filter: 'brightness(1)' }, { transform: 'perspective(1600px) rotateY(-88deg)', filter: 'brightness(.7)' }],
+      { duration: 170, easing: 'cubic-bezier(.55,0,.7,.4)', fill: 'forwards' },
+    );
+    turning = out;
+    out.onfinish = () => {
+      put(design, tpl, brand);
+      turning = design.animate(
+        [{ transform: 'perspective(1600px) rotateY(88deg)', filter: 'brightness(.7)' }, { transform: 'perspective(1600px) rotateY(0deg)', filter: 'brightness(1)' }],
+        { duration: 420, easing: 'cubic-bezier(.23,1,.32,1)', fill: 'forwards' },
+      );
+    };
   };
   for (const l of labels) {
     const b = document.createElement('button');
@@ -105,5 +120,5 @@ if (design && picks && labels.length) {
     const paper = design.firstElementChild;
     if (paper) paper.style.setProperty('--brand', brand);
   }));
-  render();
+  render(true);
 }
