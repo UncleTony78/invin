@@ -13,10 +13,11 @@ function formatter(currency: Currency) {
 
 /** Amount split into its currency symbol and the number, so the symbol can sit lighter. */
 export function moneyParts(value: number, currency: Currency) {
-  const parts = formatter(currency).formatToParts(value);
+  const parts = formatter(currency).formatToParts(Math.abs(value));
   const symbol = parts.filter((p) => p.type === "currency").map((p) => p.value).join("");
   const number = parts.filter((p) => p.type !== "currency").map((p) => p.value).join("");
-  return { symbol, number };
+  // A typographic minus before the symbol: "−$200.00", never "$-200.00"
+  return { symbol: value < 0 ? `\u2212${symbol}` : symbol, number };
 }
 
 export function formatMoney(value: number, currency: Currency = "USD") {

@@ -1,6 +1,7 @@
 import "server-only";
 import { eq } from "drizzle-orm";
 import { db, schema as s } from "@/db";
+import { notify } from "./notify";
 
 /**
  * Every email goes through here: it's logged in the outbox, then delivered with Resend.
@@ -64,6 +65,7 @@ export async function sendEmail(input: {
     return { status: "sent" as const };
   } catch (e) {
     await db.update(s.outbox).set({ status: "failed", error: e instanceof Error ? e.message : String(e) }).where(eq(s.outbox.id, row.id));
+    if (input.workspaceId) await notify(input.workspaceId, { kind: "failed", title: "An email didn't send", body: `${input.subject}, to ${input.to}`, invoiceId: input.invoiceId ?? null, href: "/outbox" });
     return { status: "failed" as const };
   }
 }

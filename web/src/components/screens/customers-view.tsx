@@ -14,6 +14,7 @@ import { useWorkspaceCurrency } from "@/components/shell/workspace-context";
 import { formatDate } from "@/lib/invoice-math";
 import type { CustomerSummary } from "@/server/queries";
 import { CustomerDialog } from "./customer-form";
+import { CustomerImport } from "./customer-import";
 
 type Sort = "owed" | "name" | "recent";
 
@@ -44,6 +45,13 @@ export function CustomersView({ customers }: { customers: CustomerSummary[] }) {
           </p>
         </div>
         <div className="acts">
+          <CustomerImport
+            existingEmails={customers.map((c) => c.email)}
+            onDone={(msg) => {
+              toast({ title: `Import done: ${msg}` });
+              router.refresh();
+            }}
+          />
           <CustomerDialog
             trigger={<Button variant="primary" icon="plus">New customer</Button>}
             onSaved={(id, v) => {

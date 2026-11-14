@@ -32,7 +32,9 @@ Also built: the customer's invoice page (`/i/[token]`) with "I've paid" claims a
 
 Sign-in and onboarding: passwordless sign-in with a 6-digit email code (Better Auth, `/sign-in`), then a chat-style welcome (`/welcome`) that asks seven questions, saves each answer as it's given (refresh-safe), checks everything back in a summary, and creates the workspace. To see the sample data, sign in as `ada@adaobi.studio`. In development the code is also printed in the dev server log (`[sign-in] code for …`). Needs `BETTER_AUTH_SECRET` in `.env.local`.
 
-Next: Phase 2 (recurring invoices, reminder schedules, receipts), plus inviting teammates and Google sign-in.
+Phase 2 (built): recurring series (`/recurring`), automatic reminders and receipts (background runner in `src/instrumentation.ts`; production calls `/api/cron` with `CRON_SECRET`), notifications (bell), refunds, customer credit from overpayments (used on the next invoice), bulk actions on the invoice list, invoice CSV export (`/invoices/export`), customer CSV import and export (`/customers/export`).
+
+Next: saved views and tags, custom fields and more invoice designs, email notification digests, inviting teammates, Google sign-in, then Phase 3 (reports, statements, estimates).
 
 ## Component library (Phase 0)
 

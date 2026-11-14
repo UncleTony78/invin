@@ -312,3 +312,57 @@ export type InvoiceStatus = (typeof invoiceStatusEnum.enumValues)[number];
 export type Invoice = typeof invoices.$inferSelect;
 export type Customer = typeof customers.$inferSelect;
 export type Event = typeof events.$inferSelect;
+
+/* ---------------- Phase 2b: notifications, refunds, credit ---------------- */
+
+/** The in-app feed. Workspace-wide; each member's "seen up to" time decides what's unread. */
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: id(),
+    workspaceId: text("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+    /** viewed | claim | paid | overdue | recurring | failed | refund | credit */
+    kind: text("kind").notNull(),
+    title: text("title").notNull(),
+    body: text("body"),
+    invoiceId: text("invoice_id").references(() => invoices.id, { onDelete: "cascade" }),
+    href: text("href"),
+    /** Stops the same event being announced twice (e.g. "overdue:<invoice id>") */
+    dedupe: text("dedupe"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("notifications_ws").on(t.workspaceId, t.createdAt), uniqueIndex("notifications_once").on(t.workspaceId, t.dedupe)],
+);
+
+export const notificationSeen = pgTable("notification_seen", {
+  memberId: text("member_id").primaryKey().references(() => members.id, { onDelete: "cascade" }),
+  seenAt: timestamp("seen_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Money given back on a payment. The invoice's amount paid goes down by the same amount. */
+export const refunds = pgTable("refunds", {
+  id: id(),
+  paymentId: text("payment_id").notNull().references(() => payments.id, { onDelete: "cascade" }),
+  invoiceId: text("invoice_id").notNull().references(() => invoices.id, { onDelete: "cascade" }),
+  amount: minor("amount"),
+  reason: text("reason").notNull().default(""),
+  refundedOn: date("refunded_on", { mode: "string" }).notNull(),
+  recordedBy: text("recorded_by"),
+  createdAt: createdAt(),
+});
+
+/** Customer credit ledger, per currency: + when they overpay, - when it's used on an invoice. */
+export const credits = pgTable(
+  "credits",
+  {
+    id: id(),
+    workspaceId: text("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+    customerId: text("customer_id").notNull().references(() => customers.id, { onDelete: "cascade" }),
+    currency: text("currency").notNull(),
+    amount: bigint("amount", { mode: "number" }).notNull(),
+    invoiceId: text("invoice_id").references(() => invoices.id, { onDelete: "set null" }),
+    note: text("note").notNull().default(""),
+    createdAt: createdAt(),
+  },
+  (t) => [index("credits_customer").on(t.customerId, t.currency)],
+);

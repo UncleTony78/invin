@@ -78,7 +78,7 @@ export function PaymentsView({ payments, month }: { payments: PaymentRow[]; mont
             <tr><td colSpan={7} style={{ height: 140, textAlign: "center", whiteSpace: "normal" }}>{q ? `No payments match “${q}”.` : "No payments yet. Record one from an invoice when money arrives."}</td></tr>
           )}
           {list.map((p) => (
-            <tr key={p.id} data-row data-selected={sheet.current === p.invoiceId || undefined} onClick={() => sheet.open(p.invoiceId)}>
+            <tr key={p.id} data-row data-refund={p.amount < 0 || undefined} data-selected={sheet.current === p.invoiceId || undefined} onClick={() => sheet.open(p.invoiceId)}>
               <td aria-hidden="true" />
               <td>{formatDate(p.receivedOn, { year: true })}</td>
               <td>

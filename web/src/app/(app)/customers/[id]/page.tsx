@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CustomerView } from "@/components/screens/customer-view";
 import { listCustomerSummaries, listInvoices } from "@/server/queries";
+import { creditBalance } from "@/server/billing";
 import { requireSession } from "@/server/session";
 
 export async function generateMetadata({ params }: PageProps<"/customers/[id]">): Promise<Metadata> {
@@ -16,5 +17,6 @@ export default async function CustomerPage({ params }: PageProps<"/customers/[id
   const [summaries, rows] = await Promise.all([listCustomerSummaries(session), listInvoices(session)]);
   const customer = summaries.find((c) => c.id === id);
   if (!customer) notFound();
-  return <CustomerView customer={customer} invoices={rows.filter((r) => r.customerId === id)} />;
+  const credit = await creditBalance(customer.id, customer.currency);
+  return <CustomerView customer={customer} credit={credit} invoices={rows.filter((r) => r.customerId === id)} />;
 }

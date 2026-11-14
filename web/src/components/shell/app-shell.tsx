@@ -1,5 +1,6 @@
 "use client";
 
+import { NotificationBell } from "./notifications";
 import { WorkspaceContext } from "./workspace-context";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -20,6 +21,7 @@ export type ShellProps = {
   pins: PinDTO[];
   overdue: number;
   invoices: { id: string; number: string; customer: string; total: number; currency: string }[];
+  unread: number;
   children: ReactNode;
 };
 
@@ -57,7 +59,7 @@ function crumbsFor(path: string): [string, string?][] {
   return [[top.slice(0, 1).toUpperCase() + top.slice(1)]];
 }
 
-function Shell({ workspace, member, pins, overdue, invoices, children }: ShellProps) {
+function Shell({ workspace, member, pins, overdue, invoices, unread, children }: ShellProps) {
   const path = usePathname();
   const router = useRouter();
   const sheet = useInvoiceSheet();
@@ -162,6 +164,7 @@ function Shell({ workspace, member, pins, overdue, invoices, children }: ShellPr
             <Kbd>Ctrl K</Kbd>
           </button>
           <div className="r">
+            <NotificationBell initialUnread={unread} />
             <Tooltip label="Sent emails">
               <Button variant="ghost" iconOnly icon="mail" aria-label="Sent emails" onClick={() => router.push("/outbox")} />
             </Tooltip>

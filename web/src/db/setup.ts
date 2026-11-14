@@ -19,7 +19,7 @@ const db = drizzle(client, { schema: s });
 
 async function main() {
   await migrate(db, { migrationsFolder: "./drizzle" });
-  await client.exec(`TRUNCATE reminder_log, series, onboarding, verification, account, session, "user", payment_claims, outbox, pins, events, payments, line_items, invoices, catalog_items, bank_accounts, customers, members, workspaces CASCADE`);
+  await client.exec(`TRUNCATE notification_seen, notifications, refunds, credits, reminder_log, series, onboarding, verification, account, session, "user", payment_claims, outbox, pins, events, payments, line_items, invoices, catalog_items, bank_accounts, customers, members, workspaces CASCADE`);
 
   const today = new Date();
   const d = (n: number) => isoDate(today, n);
@@ -174,6 +174,14 @@ async function main() {
   await db.update(s.invoices).set({ seriesId: haldenS.id }).where(eq(s.invoices.id, halden.id));
 
   await db.insert(s.pins).values([{ workspaceId: ws.id, memberId: ada.id, kind: "view", ref: "overdue", label: "Overdue invoices", position: 0 }]);
+
+  // A little history in the notification feed (the runner adds overdue ones on its first pass)
+  const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000);
+  await db.insert(s.notifications).values([
+    { workspaceId: ws.id, kind: "viewed", title: "Lumen Labs opened INV-0140", invoiceId: inv(140).id, dedupe: `viewed:${inv(140).id}`, createdAt: hoursAgo(20) },
+    { workspaceId: ws.id, kind: "paid", title: "INV-0135 is paid in full", body: "Moses Adeyemi recorded $1,200.00", invoiceId: inv(135).id, createdAt: hoursAgo(30) },
+    { workspaceId: ws.id, kind: "viewed", title: "Northstar Advisory Ltd opened INV-0141", invoiceId: ns.id, dedupe: `viewed:${ns.id}`, createdAt: hoursAgo(52) },
+  ]);
   console.log(`Seeded ${rows.length} invoices, ${customers.length} customers and 3 recurring series for ${ws.name}.`);
 }
 

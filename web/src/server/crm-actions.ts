@@ -162,3 +162,33 @@ export async function updateAutomation(input: AutomationInput): Promise<Result> 
   refresh();
   return { ok: true };
 }
+
+/* ---------------- Import ---------------- */
+/**
+ * Add customers from a CSV. Rows whose email already belongs to a customer update that customer
+ * (merging duplicates) instead of creating a second one. Rows with problems are skipped and reported.
+ */
+export async function importCustomers(rows: CustomerInput[]): Promise<Result<{ added: number; updated: number; skipped: number }>> {
+  const session = await requireSession();
+  if (rows.length > 2000) return { ok: false, error: "Import up to 2,000 customers at a time." };
+  const existing = await db.select().from(s.customers).where(eq(s.customers.workspaceId, session.workspace.id));
+  const byEmail = new Map(existing.map((c) => [c.email.toLowerCase(), c]));
+  let added = 0, updated = 0, skipped = 0;
+  const seen = new Set<string>();
+  for (const r of rows) {
+    const email = r.email.trim().toLowerCase();
+    if (checkCustomer({ ...r, email }) || seen.has(email)) { skipped++; continue; }
+    seen.add(email);
+    const hit = byEmail.get(email);
+    if (hit) {
+      // Fill in, never blank out: an empty cell keeps what's already saved
+      await db.update(s.customers).set({ name: r.name.trim() || hit.name, address: r.address.trim() || hit.address, currency: r.currency, termsDays: r.termsDays }).where(eq(s.customers.id, hit.id));
+      updated++;
+    } else {
+      await db.insert(s.customers).values({ workspaceId: session.workspace.id, name: r.name.trim(), email, address: r.address.trim(), currency: r.currency, termsDays: r.termsDays });
+      added++;
+    }
+  }
+  refresh();
+  return { ok: true, added, updated, skipped };
+}

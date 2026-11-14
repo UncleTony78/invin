@@ -9,12 +9,12 @@ import { useToast } from "@/components/ui/toast";
 import { Money } from "@/components/invoice/money";
 import { StatusPill } from "@/components/invoice/status";
 import { useInvoiceSheet } from "@/components/shell/invoice-sheet";
-import type { Currency } from "@/lib/format";
+import { formatMoney, type Currency } from "@/lib/format";
 import { formatDate } from "@/lib/invoice-math";
 import type { CustomerSummary, InvoiceRow } from "@/server/queries";
 import { CustomerDialog } from "./customer-form";
 
-export function CustomerView({ customer: c, invoices }: { customer: CustomerSummary; invoices: InvoiceRow[] }) {
+export function CustomerView({ customer: c, invoices, credit = 0 }: { customer: CustomerSummary; invoices: InvoiceRow[]; credit?: number }) {
   const router = useRouter();
   const sheet = useInvoiceSheet();
   const toast = useToast();
@@ -24,7 +24,7 @@ export function CustomerView({ customer: c, invoices }: { customer: CustomerSumm
   });
 
   const facts: [string, React.ReactNode, string?][] = [
-    ["Owed now", <Money key="o" value={c.outstanding / 100} currency={cur} />, c.overdue ? undefined : "Nothing overdue"],
+    ["Owed now", <Money key="o" value={c.outstanding / 100} currency={cur} />, credit > 0 ? `${formatMoney(credit / 100, cur)} in credit, used on their next invoice` : c.overdue ? undefined : "Nothing overdue"],
     ["Overdue", c.overdue ? <span key="v" className="late"><Money value={c.overdue / 100} currency={cur} /></span> : "—"],
     ["Billed in total", <Money key="b" value={c.billed / 100} currency={cur} />, `${c.invoices} invoice${c.invoices === 1 ? "" : "s"}`],
     ["Usually pays", c.avgDaysToPay === null ? "—" : c.avgDaysToPay <= 1 ? "Same day" : `In ${c.avgDaysToPay} days`, `Their terms: ${c.termsDays ? `${c.termsDays} days` : "on receipt"}`],

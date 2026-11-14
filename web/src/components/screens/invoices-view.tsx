@@ -2,20 +2,21 @@
 
 import { useWorkspaceCurrency } from "@/components/shell/workspace-context";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/form";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Button, MorphLabel } from "@/components/ui/button";
+import { Checkbox, Switch } from "@/components/ui/form";
 import { Icon } from "@/components/ui/icon";
 import { Avatar, Tabs } from "@/components/ui/identity";
-import { Menu, MenuContent, MenuItem, MenuTrigger, Tooltip } from "@/components/ui/overlay";
+import { Dialog, DialogClose, DialogContent, Menu, MenuContent, MenuItem, MenuLabel, MenuTrigger, Tooltip } from "@/components/ui/overlay";
 import { useToast } from "@/components/ui/toast";
 import { Money } from "@/components/invoice/money";
 import { MoneyPipeline, type PipelineKey } from "@/components/invoice/pipeline";
 import { StatusPill } from "@/components/invoice/status";
 import { useInvoiceSheet } from "@/components/shell/invoice-sheet";
-import { formatMoney, formatShort, type Currency } from "@/lib/format";
+import { formatMoney, formatShort, tintFor, type Currency } from "@/lib/format";
 import { toHomeMinor } from "@/lib/fx";
-import { sendReminder, togglePin } from "@/server/actions";
+import { bulkInvoices, sendReminder, togglePin, type BulkOp } from "@/server/actions";
 import type { InvoiceRow, PipelineData } from "@/server/queries";
 
 type View = "all" | "open" | "overdue" | "drafts" | "scheduled" | "paid";
@@ -35,10 +36,9 @@ const GROUPS: { key: string; label: string; test: (r: InvoiceRow) => boolean }[]
   { key: "paid", label: "Paid", test: (r) => r.stored === "paid" },
   { key: "cancelled", label: "Cancelled", test: (r) => r.stored === "cancelled" },
 ];
-const CAT_COLOUR: Record<string, string> = { Design: "#E0663A", Retainer: "#3F5180", Consulting: "#0E6A63", Content: "#B0306A" };
 const VIEW_FOR: Record<PipelineKey, View> = { draft: "drafts", open: "open", overdue: "overdue", paid: "paid" };
 
-export function InvoicesView({ rows, pipeline, initialView, fresh, initialQ }: { rows: InvoiceRow[]; pipeline: PipelineData; initialView: string; fresh?: string; initialQ?: string }) {
+export function InvoicesView({ rows, pipeline, initialView, fresh, initialQ, categories = [] }: { rows: InvoiceRow[]; pipeline: PipelineData; initialView: string; fresh?: string; initialQ?: string; categories?: string[] }) {
   const home = useWorkspaceCurrency() as Currency;
   const router = useRouter();
   const sheet = useInvoiceSheet();
@@ -47,6 +47,9 @@ export function InvoicesView({ rows, pipeline, initialView, fresh, initialQ }: {
   const [q, setQ] = useState(initialQ ?? "");
   const [grouped, setGrouped] = useState(true);
   const [closed, setClosed] = useState<Set<string>>(new Set());
+  // Selection for bulk actions. Shift-click selects everything between the last click and this one.
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const lastPick = useRef<string | null>(null);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect -- follow ?view= when a pin or the pipeline links here
   useEffect(() => setView((VIEWS.find((v) => v.value === initialView)?.value ?? "all") as View), [initialView]);
@@ -64,6 +67,32 @@ export function InvoicesView({ rows, pipeline, initialView, fresh, initialQ }: {
       return `${r.number} ${r.customer} ${r.category ?? ""}`.toLowerCase().includes(needle);
     });
   }, [rows, view, q]);
+
+  const allPicked = filtered.length > 0 && filtered.every((r) => picked.has(r.id));
+  function pick(id: string, range: boolean) {
+    setPicked((cur) => {
+      const next = new Set(cur);
+      const turnOn = !cur.has(id);
+      const order = filtered.map((r) => r.id);
+      const a = lastPick.current ? order.indexOf(lastPick.current) : -1;
+      const b = order.indexOf(id);
+      const span = range && a >= 0 && b >= 0 ? order.slice(Math.min(a, b), Math.max(a, b) + 1) : [id];
+      for (const x of span) {
+        if (turnOn) next.add(x);
+        else next.delete(x);
+      }
+      return next;
+    });
+    lastPick.current = id;
+  }
+  // Escape clears a selection before it closes anything else
+  useEffect(() => {
+    if (!picked.size) return;
+    const sheetOpen = !!sheet.current;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !sheetOpen && setPicked(new Set());
+    addEventListener("keydown", onKey);
+    return () => removeEventListener("keydown", onKey);
+  }, [picked.size, sheet]);
 
   const sections = grouped ? GROUPS.map((g) => ({ ...g, rows: filtered.filter(g.test) })).filter((g) => g.rows.length) : [{ key: "all", label: "", test: () => true, rows: filtered }];
   const ordered = sections.flatMap((g) => (closed.has(g.key) ? [] : g.rows));
@@ -130,12 +159,25 @@ export function InvoicesView({ rows, pipeline, initialView, fresh, initialQ }: {
         </label>
         <span className="sp" />
         <Switch checked={grouped} onCheckedChange={setGrouped} label={<span className="whitespace-nowrap text-[13px] text-text-2">Group by status</span>} />
+        <Tooltip label="Download this view as a spreadsheet">
+          <a className="iv-btn iv-btn--ghost iv-btn--sm" href={`/invoices/export?ids=${filtered.map((r) => r.id).join(",")}`} download>
+            <Icon name="download" />
+            Export
+          </a>
+        </Tooltip>
       </div>
 
       <table className="tbl" data-m="inv">
         <thead>
           <tr>
-            <th aria-hidden="true" />
+            <th className="sel">
+              <Checkbox
+                aria-label={allPicked ? "Clear selection" : "Select all in this view"}
+                checked={allPicked}
+                indeterminate={picked.size > 0 && !allPicked}
+                onCheckedChange={() => setPicked(allPicked ? new Set() : new Set(filtered.map((r) => r.id)))}
+              />
+            </th>
             <th>Customer</th>
             <th>Category</th>
             <th>Due</th>
@@ -169,6 +211,8 @@ export function InvoicesView({ rows, pipeline, initialView, fresh, initialQ }: {
                 setClosed(next);
               }}
               selected={sheet.current}
+              picked={picked}
+              onPick={pick}
               fresh={fresh}
               onOpen={(id, pay) => sheet.open(id, { pay })}
               onRemind={async (r) => {
@@ -183,14 +227,25 @@ export function InvoicesView({ rows, pipeline, initialView, fresh, initialQ }: {
           ))}
         </tbody>
       </table>
+
+      <BulkBar
+        ids={[...picked]}
+        rows={rows}
+        categories={categories}
+        onClear={() => setPicked(new Set())}
+        onDone={() => {
+          setPicked(new Set());
+          router.refresh();
+        }}
+      />
     </div>
   );
 }
 
 function GroupRows({
-  label, rows, open, onToggle, selected, fresh, onOpen, onRemind, onPin,
+  label, rows, open, onToggle, selected, picked, onPick, fresh, onOpen, onRemind, onPin,
 }: {
-  label: string; rows: InvoiceRow[]; open: boolean; onToggle: () => void; selected: string | null; fresh?: string;
+  label: string; rows: InvoiceRow[]; open: boolean; onToggle: () => void; selected: string | null; picked: Set<string>; onPick: (id: string, range: boolean) => void; fresh?: string;
   onOpen: (id: string, pay?: boolean) => void; onRemind: (r: InvoiceRow) => void; onPin: (r: InvoiceRow) => void;
 }) {
   const home = useWorkspaceCurrency() as Currency;
@@ -215,15 +270,17 @@ function GroupRows({
           const cur = r.currency as Currency;
           const canPay = ["sent", "viewed", "partial"].includes(r.stored);
           return (
-            <tr key={r.id} data-row data-selected={selected === r.id || undefined} data-fresh={fresh === r.number || undefined} onClick={() => onOpen(r.id)}>
-              <td aria-hidden="true" />
+            <tr key={r.id} data-row data-selected={selected === r.id || undefined} data-picked={picked.has(r.id) || undefined} data-fresh={fresh === r.number || undefined} onClick={() => onOpen(r.id)}>
+              <td className="sel" onClick={(e) => { e.stopPropagation(); onPick(r.id, e.shiftKey); }}>
+                <Checkbox aria-label={`Select ${r.number}`} checked={picked.has(r.id)} onClick={(e) => e.preventDefault()} tabIndex={-1} />
+              </td>
               <td>
                 <span className="cust">
                   <Avatar name={r.customer} size="md" />
                   <span><b>{r.customer}</b><small>{r.number}</small></span>
                 </span>
               </td>
-              <td><span className="catg"><i style={{ background: CAT_COLOUR[r.category] ?? "#8A8883" }} />{r.category}</span></td>
+              <td><span className="catg"><i style={{ background: tintFor(r.category ?? "General")[1] }} />{r.category}</span></td>
               <td className={r.status === "overdue" ? "late" : "text-text-2"}>{r.due}</td>
               <td><StatusPill status={r.status} /></td>
               <td className="r">
@@ -258,6 +315,106 @@ function GroupRows({
             </tr>
           );
         })}
+    </>
+  );
+}
+
+/** Floats up when invoices are selected. Each action says what it will do to how many before it runs. */
+function BulkBar({ ids, rows, categories, onClear, onDone }: { ids: string[]; rows: InvoiceRow[]; categories: string[]; onClear: () => void; onDone: () => void }) {
+  const toast = useToast();
+  const reduce = useReducedMotion();
+  const [confirm, setConfirm] = useState<null | "paid" | "cancel" | "delete">(null);
+  const [busy, setBusy] = useState(false);
+  const sel = rows.filter((r) => ids.includes(r.id));
+  const openOnes = sel.filter((r) => ["sent", "viewed", "partial"].includes(r.stored));
+  const drafts = sel.filter((r) => r.stored === "draft");
+  const cancellable = sel.filter((r) => ["sent", "viewed", "partial", "scheduled"].includes(r.stored));
+  const n = (k: number, word = "invoice") => `${k} ${word}${k === 1 ? "" : "s"}`;
+
+  async function run(op: BulkOp, arg?: string, label?: (done: number) => string) {
+    setBusy(true);
+    const res = await bulkInvoices(ids, op, arg);
+    setBusy(false);
+    setConfirm(null);
+    toast({ title: (label ?? ((d) => `Done for ${n(d)}`))(res.done) + (res.skipped ? `. ${res.skipped} skipped.` : "") });
+    onDone();
+  }
+
+  const copy = {
+    paid: { title: `Mark ${n(openOnes.length)} as paid?`, body: "Each one gets a payment for its full balance, dated today, by bank transfer. Use this for money that has already arrived.", go: "Mark as paid", op: "paid" as const },
+    cancel: { title: `Cancel ${n(cancellable.length)}?`, body: "Customers can no longer pay them, and reminders stop. They stay on record.", go: "Cancel invoices", op: "cancel" as const },
+    delete: { title: `Delete ${n(drafts.length, "draft")}?`, body: "Drafts were never sent, so nothing changes for customers. This can't be undone.", go: "Delete drafts", op: "delete" as const },
+  };
+
+  return (
+    <>
+      <AnimatePresence>
+        {ids.length > 0 && (
+          <motion.div
+            className="bulk"
+            role="toolbar"
+            aria-label={`${ids.length} selected`}
+            initial={reduce ? { opacity: 0 } : { opacity: 0, transform: "translate(-50%, 16px) scale(0.98)" }}
+            animate={{ opacity: 1, transform: "translate(-50%, 0px) scale(1)" }}
+            exit={reduce ? { opacity: 0 } : { opacity: 0, transform: "translate(-50%, 12px) scale(0.98)" }}
+            transition={{ type: "spring", bounce: 0, duration: 0.32 }}
+          >
+            <span className="bulk-n"><b key={ids.length}>{ids.length}</b> selected</span>
+            <span className="bulk-sep" />
+            <Button size="sm" variant="ghost" icon="bell" disabled={busy || !openOnes.length} onClick={() => run("remind", undefined, (d) => `Reminders sent for ${n(d)}`)}>Remind</Button>
+            <Button size="sm" variant="ghost" icon="cash" disabled={busy || !openOnes.length} onClick={() => setConfirm("paid")}>Mark paid</Button>
+            <Menu>
+              <MenuTrigger>
+                <Button size="sm" variant="ghost" icon="copy" disabled={busy}>Category</Button>
+              </MenuTrigger>
+              <MenuContent side="top">
+                <MenuLabel>Move {n(ids.length)} to</MenuLabel>
+                {categories.map((c) => (
+                  <MenuItem key={c} onClick={() => run("category", c, (d) => `${n(d)} moved to ${c}`)}>
+                    <span className="cat-dot" style={{ background: tintFor(c)[1] }} />
+                    {c}
+                  </MenuItem>
+                ))}
+              </MenuContent>
+            </Menu>
+            <a className="iv-btn iv-btn--ghost iv-btn--sm" href={`/invoices/export?ids=${ids.join(",")}`} download>
+              <Icon name="download" />
+              Export
+            </a>
+            <Menu>
+              <MenuTrigger>
+                <Button size="sm" variant="ghost" iconOnly icon="more" aria-label="More bulk actions" disabled={busy} />
+              </MenuTrigger>
+              <MenuContent side="top" align="end">
+                <MenuItem disabled={!cancellable.length} onClick={() => setConfirm("cancel")}><Icon name="x" />Cancel {cancellable.length ? n(cancellable.length) : "invoices"}</MenuItem>
+                <MenuItem disabled={!drafts.length} onClick={() => setConfirm("delete")}><Icon name="trash" />Delete {drafts.length ? n(drafts.length, "draft") : "drafts"}</MenuItem>
+              </MenuContent>
+            </Menu>
+            <span className="bulk-sep" />
+            <Tooltip label="Clear selection" kbd="Esc">
+              <Button size="sm" variant="ghost" iconOnly icon="x" aria-label="Clear selection" onClick={onClear} />
+            </Tooltip>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <Dialog open={!!confirm} onOpenChange={(o) => !o && setConfirm(null)}>
+        {confirm && (
+          <DialogContent
+            title={copy[confirm].title}
+            description={copy[confirm].body}
+            footer={
+              <>
+                <span className="iv-sp" />
+                <DialogClose render={<Button>Go back</Button>} />
+                <Button variant={confirm === "paid" ? "primary" : "danger"} disabled={busy} style={{ minWidth: 140 }} onClick={() => run(copy[confirm].op)}>
+                  <MorphLabel id={busy ? "b" : "i"}>{busy ? "Working…" : copy[confirm].go}</MorphLabel>
+                </Button>
+              </>
+            }
+          />
+        )}
+      </Dialog>
     </>
   );
 }

@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, inArray, lte, sql } from "drizzle-orm";
+import { and, eq, inArray, lt, lte, sql } from "drizzle-orm";
 import { db, schema as s } from "@/db";
 import { formatMoney, type Currency } from "@/lib/format";
 import { formatDate, isoDate } from "@/lib/invoice-math";
@@ -7,6 +7,7 @@ import { runDate, withinEnd, type Frequency } from "@/lib/schedule";
 import { issueInvoice, remindCustomer, sendReceipt, today, type Actor } from "./billing";
 import { appUrl, sendEmail } from "./email";
 import { draftReadyNotice } from "./email-templates";
+import { notify } from "./notify";
 
 /*
  * "Runs itself": everything InVin does without being asked.
@@ -26,6 +27,7 @@ export async function runDueWork(now = new Date()) {
     const day = isoDate(now);
     const recurring = await runRecurring(day);
     const reminders = await runReminders(day);
+    await runOverdue(day);
     const receipts = await runReceipts(now);
     return { recurring, reminders, receipts };
   } finally {
@@ -84,6 +86,9 @@ export async function runSeriesOnce(seriesId: string, o: { runDate?: string; act
         template: cur.template, brandColor: cur.brandColor, bankAccountId: cur.bankAccountId ?? "", lines: cur.lines,
       },
     });
+    await notify(ws.id, cur.mode === "draft"
+      ? { kind: "recurring", title: `Recurring draft ${r.number} is ready to check`, body: `For ${customer.name}, ${formatMoney(r.total / 100, customer.currency as Currency)}`, invoiceId: r.id, href: `/invoices/${r.number}/edit` }
+      : { kind: "recurring", title: `Recurring invoice ${r.number} sent to ${customer.name}`, body: formatMoney(r.total / 100, customer.currency as Currency), invoiceId: r.id });
     if (cur.mode === "draft") {
       const mail = draftReadyNotice({ number: r.number, customer: customer.name, amount: formatMoney(r.total / 100, customer.currency as Currency), url: `${appUrl()}/invoices/${r.number}/edit` });
       await sendEmail({ workspaceId: ws.id, invoiceId: r.id, to: ws.email, ...mail });
@@ -92,6 +97,21 @@ export async function runSeriesOnce(seriesId: string, o: { runDate?: string; act
   } catch (e) {
     await db.update(s.series).set({ lastError: e instanceof Error ? e.message : String(e) }).where(eq(s.series.id, cur.id));
     throw e;
+  }
+}
+
+/* ---------------- Overdue ---------------- */
+
+/** Announce each invoice once, the day after its due date passes. */
+export async function runOverdue(day: string) {
+  const late = await db
+    .select({ inv: s.invoices, customer: s.customers.name })
+    .from(s.invoices)
+    .innerJoin(s.customers, eq(s.customers.id, s.invoices.customerId))
+    .where(and(inArray(s.invoices.status, ["sent", "viewed", "partial"]), lt(s.invoices.dueDate, day)));
+  for (const { inv, customer } of late) {
+    const left = formatMoney((inv.total - inv.amountPaid) / 100, inv.currency as Currency);
+    await notify(inv.workspaceId, { kind: "overdue", title: `${inv.number} is overdue`, body: `${customer} still owes ${left}`, invoiceId: inv.id, dedupe: `overdue:${inv.id}` });
   }
 }
 

@@ -8,6 +8,7 @@ import { formatDate } from "@/lib/invoice-math";
 import { appUrl, sendEmail } from "./email";
 import { claimNotice } from "./email-templates";
 import { today } from "./queries";
+import { notify } from "./notify";
 
 /* Actions a customer can take on their invoice page. No session: the public token is the key,
    so every action re-reads the invoice by token and checks it is in a state that allows it. */
@@ -25,6 +26,7 @@ export async function trackView(token: string) {
   const [c] = await db.select().from(s.customers).where(eq(s.customers.id, inv.customerId));
   await db.update(s.invoices).set({ status: "viewed" }).where(and(eq(s.invoices.id, inv.id), eq(s.invoices.status, "sent")));
   await db.insert(s.events).values({ workspaceId: inv.workspaceId, invoiceId: inv.id, title: "Customer opened the invoice", actorType: "customer", actorLabel: c?.name ?? "Customer" });
+  await notify(inv.workspaceId, { kind: "viewed", title: `${c?.name ?? "Your customer"} opened ${inv.number}`, invoiceId: inv.id, dedupe: `viewed:${inv.id}` });
   revalidatePath("/", "layout");
 }
 
@@ -48,6 +50,7 @@ export async function submitClaim(token: string, input: { amount: number; paidOn
   const amountLabel = formatMoney(amount / 100, cur);
 
   await db.insert(s.paymentClaims).values({ invoiceId: inv.id, amount, paidOn: input.paidOn, reference, note });
+  await notify(inv.workspaceId, { kind: "claim", title: `${c?.name ?? "Your customer"} says they paid ${formatMoney(amount / 100, cur)}`, body: `For ${inv.number}. Check your bank, then confirm it.`, invoiceId: inv.id });
   await db.insert(s.events).values({
     workspaceId: inv.workspaceId, invoiceId: inv.id, actorType: "customer", actorLabel: c?.name ?? "Customer",
     title: `Customer says they paid ${amountLabel}`, note: [reference && `Reference ${reference}`, note].filter(Boolean).join(" · ") || null,

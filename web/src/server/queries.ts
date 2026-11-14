@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq, inArray, or } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { db, schema as s } from "@/db";
 import type { Status } from "@/components/invoice/status";
 import { toHomeMinor, toUsdMinor } from "@/lib/fx";
@@ -109,6 +109,9 @@ export type InvoiceDetail = {
   reminders: { on: boolean; paused: boolean; customerPaused: boolean; next: { date: string; offset: number } | null };
   receiptsOn: boolean;
   lastPayment: { id: string; receiptSentAt: string | null; receiptDue: boolean } | null;
+  payments: { id: string; amount: number; refunded: number; method: string; receivedOn: string; reference: string; receiptSentAt: string | null }[];
+  /** The customer's credit in this invoice's currency */
+  credit: number;
 };
 
 export async function getInvoiceDetail(session: Session, id: string): Promise<InvoiceDetail | null> {
@@ -117,7 +120,7 @@ export async function getInvoiceDetail(session: Session, id: string): Promise<In
     .from(s.invoices)
     .where(and(or(eq(s.invoices.id, id), eq(s.invoices.number, id)), eq(s.invoices.workspaceId, session.workspace.id)));
   if (!inv) return null;
-  const [[customer], lines, events, bank, members, pin, claims, seriesRows, remLog, pays] = await Promise.all([
+  const [[customer], lines, events, bank, members, pin, claims, seriesRows, remLog, pays, refundRows, [{ credit }]] = await Promise.all([
     db.select().from(s.customers).where(eq(s.customers.id, inv.customerId)),
     db.select().from(s.lineItems).where(eq(s.lineItems.invoiceId, inv.id)).orderBy(asc(s.lineItems.position)),
     db.select().from(s.events).where(eq(s.events.invoiceId, inv.id)).orderBy(desc(s.events.createdAt)),
@@ -127,7 +130,9 @@ export async function getInvoiceDetail(session: Session, id: string): Promise<In
     db.select().from(s.paymentClaims).where(and(eq(s.paymentClaims.invoiceId, inv.id), eq(s.paymentClaims.status, "pending"))),
     inv.seriesId ? db.select().from(s.series).where(eq(s.series.id, inv.seriesId)) : Promise.resolve([]),
     db.select().from(s.reminderLog).where(eq(s.reminderLog.invoiceId, inv.id)),
-    db.select().from(s.payments).where(eq(s.payments.invoiceId, inv.id)).orderBy(desc(s.payments.createdAt)).limit(1),
+    db.select().from(s.payments).where(eq(s.payments.invoiceId, inv.id)).orderBy(desc(s.payments.createdAt)),
+    db.select().from(s.refunds).where(eq(s.refunds.invoiceId, inv.id)),
+    db.select({ credit: sql<number>`coalesce(sum(${s.credits.amount}), 0)` }).from(s.credits).where(and(eq(s.credits.customerId, inv.customerId), eq(s.credits.currency, inv.currency))),
   ]);
   const sr = seriesRows[0];
   const t = today();
@@ -167,6 +172,11 @@ export async function getInvoiceDetail(session: Session, id: string): Promise<In
     },
     receiptsOn: ws.receiptsOn,
     lastPayment: pays[0] ? { id: pays[0].id, receiptSentAt: pays[0].receiptSentAt?.toISOString() ?? null, receiptDue: pays[0].receiptDue } : null,
+    payments: pays.map((p) => ({
+      id: p.id, amount: p.amount, method: p.method, receivedOn: p.receivedOn, reference: p.reference, receiptSentAt: p.receiptSentAt?.toISOString() ?? null,
+      refunded: refundRows.filter((r) => r.paymentId === p.id).reduce((a, r) => a + r.amount, 0),
+    })),
+    credit: Number(credit),
   };
 }
 
@@ -239,7 +249,18 @@ export async function listPayments(session: Session): Promise<PaymentRow[]> {
     .leftJoin(s.members, eq(s.members.id, s.payments.recordedBy))
     .where(eq(s.invoices.workspaceId, session.workspace.id))
     .orderBy(desc(s.payments.receivedOn), desc(s.payments.createdAt));
-  return rows.map((r) => ({ id: r.p.id, receivedOn: r.p.receivedOn, amount: r.p.amount, currency: r.currency, method: r.p.method, reference: r.p.reference, invoiceId: r.invoiceId, number: r.number, customer: r.customer, recordedBy: r.member ?? "—" }));
+  // Refunds sit in the same ledger as money going out (negative amounts), so totals are what you actually kept
+  const refunds = await db
+    .select({ r: s.refunds, number: s.invoices.number, currency: s.invoices.currency, customer: s.customers.name, invoiceId: s.invoices.id, member: s.members.name })
+    .from(s.refunds)
+    .innerJoin(s.invoices, eq(s.invoices.id, s.refunds.invoiceId))
+    .innerJoin(s.customers, eq(s.customers.id, s.invoices.customerId))
+    .leftJoin(s.members, eq(s.members.id, s.refunds.recordedBy))
+    .where(eq(s.invoices.workspaceId, session.workspace.id));
+  return [
+    ...rows.map((r) => ({ id: r.p.id, receivedOn: r.p.receivedOn, amount: r.p.amount, currency: r.currency, method: r.p.method, reference: r.p.reference, invoiceId: r.invoiceId, number: r.number, customer: r.customer, recordedBy: r.member ?? "—" })),
+    ...refunds.map((x) => ({ id: x.r.id, receivedOn: x.r.refundedOn, amount: -x.r.amount, currency: x.currency, method: "Refund", reference: x.r.reason, invoiceId: x.invoiceId, number: x.number, customer: x.customer, recordedBy: x.member ?? "—" })),
+  ].sort((a, b) => b.receivedOn.localeCompare(a.receivedOn));
 }
 
 export async function catalogUsage(session: Session) {

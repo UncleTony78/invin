@@ -14,7 +14,7 @@ import { StatusPill } from "@/components/invoice/status";
 import { Timeline, type TimelineEvent } from "@/components/invoice/timeline";
 import { formatMoney, tintFor, type Currency } from "@/lib/format";
 import { formatDate, isoDate, toMinor } from "@/lib/invoice-math";
-import { cancelInvoice, confirmClaim, dismissClaim, fetchInvoiceDetail, recordPayment, sendReceiptNow, sendReminder, setInvoiceReminders, togglePin, undoPayment } from "@/server/actions";
+import { applyCredit, cancelInvoice, confirmClaim, dismissClaim, fetchInvoiceDetail, recordPayment, refundPayment, sendReceiptNow, sendReminder, setInvoiceReminders, togglePin, undoPayment } from "@/server/actions";
 import { makeRecurring } from "@/server/series-actions";
 import { DEFAULT_SCHEDULE, ScheduleDialog } from "@/components/screens/schedule-fields";
 import { describeOffset } from "@/lib/schedule";
@@ -310,6 +310,7 @@ function SheetBody({
   const r = d.row;
   const cur = r.currency as Currency;
   const m = (minor: number) => formatMoney(minor / 100, cur);
+  const refunded = d.payments.reduce((t, p) => t + p.refunded, 0);
   const open = ["sent", "viewed", "partial"].includes(r.stored);
   const [amount, setAmount] = useState((r.left / 100).toFixed(2));
   const [method, setMethod] = useState<"Bank transfer" | "Cash" | "Card" | "Other">("Bank transfer");
@@ -330,7 +331,7 @@ function SheetBody({
     if (res.status === "paid") onPaid();
     else onChanged();
     toast({
-      title: `${res.status === "paid" ? `${r.number} is paid in full` : `Part payment recorded on ${r.number}`}${res.receipt ? `. A receipt goes to ${d.customer.name} in a minute.` : ""}`,
+      title: `${res.status === "paid" ? `${r.number} is paid in full` : `Part payment recorded on ${r.number}`}${res.credit ? `. ${m(res.credit)} extra saved as credit.` : ""}${res.receipt ? ` A receipt goes to ${d.customer.name} in a minute.` : ""}`,
       undo: async () => {
         await undoPayment(r.id, res.paymentId);
         onChanged();
@@ -381,7 +382,7 @@ function SheetBody({
         )}
         <div className="sh-line">
           {r.stored === "paid" ? (
-            <span><b>Paid in full</b></span>
+            <span><b>Paid in full</b>{refunded > 0 && <> · {m(refunded)} refunded</>}</span>
           ) : r.stored === "cancelled" ? (
             <span>Cancelled</span>
           ) : r.stored === "draft" ? (
@@ -514,6 +515,27 @@ function SheetBody({
                 </>
               )}
             </li>
+            {open && d.credit > 0 && (
+              <li className="sh-credit">
+                <Icon name="cash" />
+                <span>
+                  {d.customer.name} has {m(d.credit)} in credit
+                  <small>From an earlier overpayment</small>
+                </span>
+                <button
+                  type="button"
+                  className="iv-link"
+                  onClick={async () => {
+                    const res = await applyCredit(r.id);
+                    toast({ title: res.used ? `${m(res.used)} of credit used on ${r.number}` : "No credit to use" });
+                    if (res.used >= r.left) onPaid();
+                    else onChanged();
+                  }}
+                >
+                  Use it
+                </button>
+              </li>
+            )}
             {open && (
               <li>
                 <Icon name="bell" />
@@ -547,6 +569,7 @@ function SheetBody({
             )}
           </ul>
         )}
+        {d.payments.length > 0 && <PaymentsList d={d} onChanged={onChanged} />}
         {open && (
           <div className="payf" data-open={payOpen || undefined}>
             <div>
@@ -554,7 +577,9 @@ function SheetBody({
                 <label className="iv-field">
                   <span className="iv-label">Amount received</span>
                   <input className="iv-input iv-num" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
-                  <span className="iv-hint">{m(r.left)} is left to pay</span>
+                  <span className="iv-hint" data-tone={amountMinor > r.left ? "info" : undefined}>
+                    {amountMinor > r.left ? `${m(amountMinor - r.left)} more than what's left. It's saved as credit for ${d.customer.name}.` : `${m(r.left)} is left to pay`}
+                  </span>
                 </label>
                 <label className="iv-field">
                   <span className="iv-label">Date received</span>
@@ -572,7 +597,7 @@ function SheetBody({
                 <div className="full flex justify-end gap-2">
                   <Button variant="ghost" onClick={() => setPayOpen(false)}>Cancel</Button>
                   <Button variant="primary" type="submit" disabled={amountMinor <= 0 || state === "saving"} style={{ minWidth: 150 }}>
-                    <MorphLabel id={state}>{state === "saving" ? "Saving…" : <><Icon name="check" />Record {m(Math.min(amountMinor, r.left))}</>}</MorphLabel>
+                    <MorphLabel id={state}>{state === "saving" ? "Saving…" : <><Icon name="check" />Record {m(amountMinor)}</>}</MorphLabel>
                   </Button>
                 </div>
               </form>
@@ -624,5 +649,106 @@ function SheetBody({
         )}
       </div>
     </>
+  );
+}
+
+/** Every payment on the invoice, newest first, each with its own receipt and refund actions. */
+function PaymentsList({ d, onChanged }: { d: InvoiceDetail; onChanged: () => void }) {
+  const toast = useToast();
+  const cur = d.row.currency as Currency;
+  const m = (minor: number) => formatMoney(minor / 100, cur);
+  const [refunding, setRefunding] = useState<InvoiceDetail["payments"][number] | null>(null);
+  const [amount, setAmount] = useState("");
+  const [reason, setReason] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const room = refunding ? refunding.amount - refunding.refunded : 0;
+  return (
+    <section className="sh-pays" aria-label="Payments">
+      <h3>Payments <span>{d.payments.length}</span></h3>
+      <ul>
+        {d.payments.map((p) => (
+          <li key={p.id}>
+            <span className="min-w-0 flex-1">
+              <b>{m(p.amount)}</b>
+              <small>
+                {formatDate(p.receivedOn, { year: true })} · {p.method}
+                {p.refunded > 0 && <span className="refunded"> · {m(p.refunded)} refunded</span>}
+              </small>
+            </span>
+            <Menu>
+              <MenuTrigger>
+                <Button size="sm" variant="ghost" iconOnly icon="more" aria-label={`Actions for the ${m(p.amount)} payment`} />
+              </MenuTrigger>
+              <MenuContent align="end">
+                <MenuItem
+                  onClick={async () => {
+                    const res = await sendReceiptNow(d.row.id, p.id);
+                    if (!res.ok) return toast({ title: res.error });
+                    toast({ title: res.delivery === "failed" ? "Receipt saved, but the email failed. See Sent emails." : `Receipt sent to ${res.to}` });
+                    onChanged();
+                  }}
+                >
+                  <Icon name="mail" />
+                  {p.receiptSentAt ? "Resend receipt" : "Send receipt"}
+                </MenuItem>
+                {p.method !== "Customer credit" && p.amount - p.refunded > 0 && (
+                  <MenuItem
+                    onClick={() => {
+                      setRefunding(p);
+                      setAmount(((p.amount - p.refunded) / 100).toFixed(2));
+                      setReason("");
+                      setError("");
+                    }}
+                  >
+                    <Icon name="cash" />
+                    Record a refund
+                  </MenuItem>
+                )}
+              </MenuContent>
+            </Menu>
+          </li>
+        ))}
+      </ul>
+
+      <Dialog open={!!refunding} onOpenChange={(o) => !o && setRefunding(null)}>
+        <DialogContent
+          title="Record a refund"
+          description={`Note money you've sent back to ${d.customer.name}. InVin doesn't move money; this keeps the invoice and your ledger right.`}
+          footer={
+            <>
+              <span className="iv-sp" />
+              <DialogClose render={<Button>Cancel</Button>} />
+              <Button
+                variant="danger"
+                disabled={busy}
+                style={{ minWidth: 140 }}
+                onClick={async () => {
+                  if (!refunding) return;
+                  setBusy(true);
+                  setError("");
+                  const res = await refundPayment(d.row.id, refunding.id, { amount: toMinor(parseFloat(amount) || 0), reason });
+                  setBusy(false);
+                  if (!res.ok) return setError(res.error);
+                  setRefunding(null);
+                  toast({ title: `Refund of ${m(toMinor(parseFloat(amount) || 0))} recorded on ${d.row.number}` });
+                  onChanged();
+                }}
+              >
+                <MorphLabel id={busy ? "b" : "i"}>{busy ? "Saving…" : "Record refund"}</MorphLabel>
+              </Button>
+            </>
+          }
+        >
+          <label className="iv-field">
+            <span className="iv-label">Amount refunded</span>
+            <input className="iv-input iv-num" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ""))} />
+            <span className="iv-hint">Up to {m(room)} on this payment</span>
+          </label>
+          <TextArea label="Why (optional)" placeholder="e.g. Part of the work was cancelled" value={reason} onChange={(e) => setReason(e.target.value)} />
+          {error && <div className="form-error"><Icon name="alert" />{error}</div>}
+        </DialogContent>
+      </Dialog>
+    </section>
   );
 }

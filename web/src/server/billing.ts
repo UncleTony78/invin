@@ -1,5 +1,5 @@
 import "server-only";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db, schema as s } from "@/db";
 import { formatMoney, type Currency } from "@/lib/format";
 import { computeTotals, formatDate, isoDate } from "@/lib/invoice-math";
@@ -71,8 +71,10 @@ export async function issueInvoice(o: {
     if (sending) await tx.insert(s.events).values({ workspaceId: ws.id, invoiceId: inv.id, ...o.actor, title: `Invoice sent to ${o.input.email?.to || o.customer.email}` });
     return { id: inv.id, number, token: inv.publicToken, ws };
   });
+  // Credit is used before the email goes, so the customer sees the right amount left to pay
+  const creditUsed = sending ? await applyCreditTo(result.id, { actorType: "system", actorId: null, actorLabel: "InVin" }, null) : 0;
   const delivery = sending ? await emailInvoice({ ws: result.ws, id: result.id, number: result.number, token: result.token, customer: o.customer, input: o.input, total: totals.total, due }) : undefined;
-  return { ...result, total: totals.total, due, delivery };
+  return { ...result, total: totals.total, due, delivery, creditUsed };
 }
 
 /** Sends the invoice email after the invoice is safely saved; a delivery failure never loses the invoice. */
@@ -144,4 +146,35 @@ export async function rememberCategory(tx: Tx | typeof db, ws: Ws, category: str
   const c = category.trim();
   if (!c || ws.categories.some((x) => x.toLowerCase() === c.toLowerCase()) || ws.categories.length >= 40) return;
   await tx.update(s.workspaces).set({ categories: [...ws.categories, c] }).where(eq(s.workspaces.id, ws.id));
+}
+
+/* ---------------- Customer credit ---------------- */
+
+/** What a customer has in credit, in one currency (minor units). */
+export async function creditBalance(customerId: string, currency: string) {
+  const [{ n }] = await db
+    .select({ n: sql<number>`coalesce(sum(${s.credits.amount}), 0)` })
+    .from(s.credits)
+    .where(and(eq(s.credits.customerId, customerId), eq(s.credits.currency, currency)));
+  return Number(n);
+}
+
+/**
+ * Use the customer's credit on an unpaid invoice: a payment marked "Customer credit"
+ * and a matching minus on the credit ledger, in one transaction. Returns what was used (0 if none).
+ */
+export async function applyCreditTo(invoiceId: string, actor: Actor, by: string | null) {
+  const [inv] = await db.select().from(s.invoices).where(eq(s.invoices.id, invoiceId));
+  if (!inv || !["sent", "viewed", "partial"].includes(inv.status)) return 0;
+  const balance = await creditBalance(inv.customerId, inv.currency);
+  const use = Math.min(balance, inv.total - inv.amountPaid);
+  if (use <= 0) return 0;
+  const paid = inv.amountPaid + use;
+  await db.transaction(async (tx) => {
+    await tx.insert(s.payments).values({ invoiceId: inv.id, amount: use, receivedOn: today(), method: "Customer credit", reference: "", recordedBy: by });
+    await tx.insert(s.credits).values({ workspaceId: inv.workspaceId, customerId: inv.customerId, currency: inv.currency, amount: -use, invoiceId: inv.id, note: `Used on ${inv.number}` });
+    await tx.update(s.invoices).set({ amountPaid: paid, status: paid >= inv.total ? "paid" : "partial" }).where(eq(s.invoices.id, inv.id));
+    await tx.insert(s.events).values({ workspaceId: inv.workspaceId, invoiceId: inv.id, ...actor, title: `Customer credit used · ${formatMoney(use / 100, inv.currency as Currency)}` });
+  });
+  return use;
 }
