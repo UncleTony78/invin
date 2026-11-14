@@ -9,7 +9,7 @@
 
 /* ---------- hero: one window holding the invoice, its story on a loop ---------- */
 .hm-hero-frame { position: relative; display: block; padding: 40px; overflow: hidden;
-  background: radial-gradient(120% 90% at 70% 0%, color-mix(in oklab, var(--accent) 34%, transparent), transparent 62%), var(--ground-bg, #d9ccb7); }
+  background: var(--ground-bg, #d9ccb7); }
 .hm-win { position: relative; width: 100% !important; max-width: none !important; background: #fff; color: #1a1916; border-radius: 14px; overflow: hidden;
   box-shadow: 0 0 0 1px rgba(26,25,22,.08), 0 30px 60px -28px rgba(26,25,22,.55); font-family: var(--font-text); }
 .hm-win__bar { height: 44px; display: flex; align-items: center; gap: 10px; padding: 0 14px; border-bottom: 1px solid #ebe9e4; font-size: 13px; }
@@ -29,7 +29,7 @@
 .hm-stamp { position: absolute; left: 13%; top: 46%; padding: .1em .45em; border: .24em solid #12713f; border-radius: .3em; color: #12713f; font-weight: 600; font-size: 34px; letter-spacing: .12em;
   background: rgba(255,255,255,.8); transform: rotate(-11deg) scale(1.18); opacity: 0; transition: opacity 120ms ease, transform 120ms ease; pointer-events: none; }
 .hm-win[data-step="3"] .hm-stamp { opacity: .92; transform: rotate(-11deg) scale(1); transition: opacity 280ms cubic-bezier(.22,1,.36,1), transform 280ms cubic-bezier(.22,1,.36,1); }
-.hm-win__foot { padding: 12px 16px 16px; border-top: 1px solid #ebe9e4; display: grid; gap: 10px; font-size: 13px; }
+.hm-win__foot { padding: 12px 56px 16px 16px; border-top: 1px solid #ebe9e4; display: grid; gap: 10px; font-size: 13px; }
 .hm-win__line { display: flex; justify-content: space-between; color: #5f5d58; }
 .hm-win__line b { color: #1a1916; font-weight: 500; font-variant-numeric: tabular-nums; }
 .hm-bar { height: 4px; border-radius: 4px; background: #ebe9e4; overflow: hidden; }
@@ -69,11 +69,11 @@
 .hm-app .bar { display: block; width: 80px; height: 4px; border-radius: 4px; background: rgba(26,25,22,.08); margin-top: 6px; overflow: hidden; }
 .hm-app .bar b { display: block; height: 100%; width: calc(var(--v) * 100%); background: #1d5c9e; }
 .hm-app .pl__insp { padding: 16px; display: flex; flex-direction: column; gap: 10px; background: #fff; }
-.hm-app .pl__insp h4 { margin: 0; font-size: 12px; font-weight: 500; color: #5f5d58; }
+.hm-app .hm-insp-h { margin: 0; font-size: 12px; font-weight: 500; color: #5f5d58; }
 .hm-insp-amt { margin: 0; font-size: 24px; letter-spacing: -.03em; font-weight: 500; }
 .hm-app .note { font-size: 12px; line-height: 1.45; padding: 10px; border-radius: 8px; background: #f6f5f2; color: #3c3a35; }
 .hm-app .note b { display: flex; align-items: center; gap: 6px; font-weight: 500; color: #1a1916; margin-bottom: 4px; }
-.hm-app .note b i { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 10px; background: #fff1ea; color: #b23f0e; }
+.hm-app .note b i { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 11px; background: #fff1ea; color: #b23f0e; }
 .hm-app .note.agent { background: #e3f2e8; }
 .hm-app .note.agent b i { background: #12713f; color: #fff; }
 
@@ -158,7 +158,7 @@
 .hm-phone__screen { border-radius: 36px; background: #fff; color: #1a1916; padding: 34px 22px 24px; display: grid; gap: 10px; font-size: 13px; }
 .hm-pp__brand { display: flex; align-items: center; gap: 8px; }
 .hm-pp__brand b { font-weight: 600; }
-.hm-pp__mk { width: 26px; height: 26px; border-radius: 7px; background: #0e5a52; color: #fff; display: grid; place-items: center; font-size: 10px; font-weight: 600; }
+.hm-pp__mk { width: 26px; height: 26px; border-radius: 7px; background: #0e5a52; color: #fff; display: grid; place-items: center; font-size: 11px; font-weight: 600; }
 .hm-pp__label { margin: 14px 0 0; color: #5f5d58; font-size: 12px; }
 .hm-pp__amt { margin: 0; font-size: 34px; letter-spacing: -.035em; font-weight: 500; line-height: 1.1; }
 .hm-pp__bank { margin-top: 6px; background: #f6f5f2; border-radius: 12px; padding: 12px; display: grid; gap: 8px; }
