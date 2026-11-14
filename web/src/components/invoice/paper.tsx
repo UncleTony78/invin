@@ -236,7 +236,7 @@ export function InvoicePaper({
           <div className="biz">{mark}{business.name}</div>
           <div className="e-no">No. <span className="iv-mono">{invoice.number}</span></div>
         </div>
-        <h2 className="e-word">{word}<span>.</span></h2>
+        <div className="e-word">{word}<span>.</span></div>
         <div className="e-meta">
           <div><small className="l">Billed to</small>{billTo}{extra}</div>
           <div><small className="l">From</small>{business.name}<br />{from}</div>
@@ -311,7 +311,7 @@ export function InvoicePaper({
     body = (
       <div className="pad">
         <div className="w-top">
-          <h2 className="w-word">{word}</h2>
+          <div className="w-word">{word}</div>
           <div className="w-id"><div className="biz">{business.name}{mark}</div><span className="iv-mono">{invoice.number}</span></div>
         </div>
         <div className="w-grid">
