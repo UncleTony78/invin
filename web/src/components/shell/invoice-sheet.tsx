@@ -14,11 +14,12 @@ import { StatusPill } from "@/components/invoice/status";
 import { Timeline, type TimelineEvent } from "@/components/invoice/timeline";
 import { formatMoney, tintFor, type Currency } from "@/lib/format";
 import { formatDate, isoDate, toMinor } from "@/lib/invoice-math";
-import { applyCredit, cancelInvoice, confirmClaim, dismissClaim, fetchInvoiceDetail, recordPayment, refundPayment, sendReceiptNow, sendReminder, setInvoiceReminders, togglePin, undoPayment } from "@/server/actions";
+import { applyCredit, setInvoiceFields, setInvoiceTags, cancelInvoice, confirmClaim, dismissClaim, fetchInvoiceDetail, recordPayment, refundPayment, sendReceiptNow, sendReminder, setInvoiceReminders, togglePin, undoPayment } from "@/server/actions";
 import { makeRecurring } from "@/server/series-actions";
 import { DEFAULT_SCHEDULE, ScheduleDialog } from "@/components/screens/schedule-fields";
 import { describeOffset } from "@/lib/schedule";
 import Link from "next/link";
+import { TagEditor } from "@/components/invoice/tags";
 import { flyToSidebar } from "@/lib/fly";
 import type { EventDTO, InvoiceDetail } from "@/server/queries";
 
@@ -358,6 +359,7 @@ function SheetBody({
     vatRate: d.invoice.vatBps / 10000,
     paid: r.stored === "partial" ? r.paid / 100 : 0,
     note: d.invoice.note,
+    fields: d.fields.filter((f) => f.print && f.value).map((f) => [f.label, f.value] as [string, string]),
     settled: r.stored === "paid" ? ("paid" as const) : r.stored === "cancelled" ? ("cancelled" as const) : undefined,
   };
 
@@ -569,6 +571,7 @@ function SheetBody({
             )}
           </ul>
         )}
+        <OrgBlock key={d.row.id} d={d} onChanged={onChanged} />
         {d.payments.length > 0 && <PaymentsList d={d} onChanged={onChanged} />}
         {open && (
           <div className="payf" data-open={payOpen || undefined}>
@@ -749,6 +752,58 @@ function PaymentsList({ d, onChanged }: { d: InvoiceDetail; onChanged: () => voi
           {error && <div className="form-error"><Icon name="alert" />{error}</div>}
         </DialogContent>
       </Dialog>
+    </section>
+  );
+}
+
+/** Tags and custom fields: reference details that can change at any time, saved as you go. */
+function OrgBlock({ d, onChanged }: { d: InvoiceDetail; onChanged: () => void }) {
+  const [tags, setTags] = useState(d.tags);
+  const [fields, setFields] = useState(() => Object.fromEntries(d.fields.map((f) => [f.id, f.value])));
+  const [saved, setSaved] = useState<string | null>(null);
+  const flash = (id: string) => {
+    setSaved(id);
+    setTimeout(() => setSaved((cur) => (cur === id ? null : cur)), 1200);
+  };
+  return (
+    <section className="sh-org">
+      <div className="sh-org-row">
+        <span className="sh-org-l"><Icon name="tag" size={14} />Tags</span>
+        <TagEditor
+          value={tags}
+          suggestions={d.allTags}
+          onChange={async (next) => {
+            setTags(next);
+            const r = await setInvoiceTags(d.row.id, next);
+            setTags(r.tags);
+          }}
+        />
+      </div>
+      {d.fields.map((f) => (
+        <label key={f.id} className="sh-org-row">
+          <span className="sh-org-l">
+            {f.label}
+            {!f.print && <small>Only you see this</small>}
+          </span>
+          <span className="sh-org-v">
+            <input
+              value={fields[f.id] ?? ""}
+              placeholder="Add"
+              maxLength={120}
+              onChange={(e) => setFields({ ...fields, [f.id]: e.target.value })}
+              onBlur={async () => {
+                if ((fields[f.id] ?? "") === f.value) return;
+                await setInvoiceFields(d.row.id, fields);
+                flash(f.id);
+                // The invoice preview below prints this field, so refresh it
+                onChanged();
+              }}
+              onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+            />
+            {saved === f.id && <span className="sh-org-ok"><Icon name="check" size={12} />Saved</span>}
+          </span>
+        </label>
+      ))}
     </section>
   );
 }

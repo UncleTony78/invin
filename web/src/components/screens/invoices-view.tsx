@@ -5,10 +5,10 @@ import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button, MorphLabel } from "@/components/ui/button";
-import { Checkbox, Switch } from "@/components/ui/form";
+import { Checkbox, Switch, TextField } from "@/components/ui/form";
 import { Icon } from "@/components/ui/icon";
 import { Avatar, Tabs } from "@/components/ui/identity";
-import { Dialog, DialogClose, DialogContent, Menu, MenuContent, MenuItem, MenuLabel, MenuTrigger, Tooltip } from "@/components/ui/overlay";
+import { Dialog, DialogClose, DialogContent, Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator, MenuTrigger, Popover, PopoverContent, PopoverTrigger, Tooltip } from "@/components/ui/overlay";
 import { useToast } from "@/components/ui/toast";
 import { Money } from "@/components/invoice/money";
 import { MoneyPipeline, type PipelineKey } from "@/components/invoice/pipeline";
@@ -16,8 +16,9 @@ import { StatusPill } from "@/components/invoice/status";
 import { useInvoiceSheet } from "@/components/shell/invoice-sheet";
 import { formatMoney, formatShort, tintFor, type Currency } from "@/lib/format";
 import { toHomeMinor } from "@/lib/fx";
-import { bulkInvoices, sendReminder, togglePin, type BulkOp } from "@/server/actions";
-import type { InvoiceRow, PipelineData } from "@/server/queries";
+import { bulkInvoices, deleteView, renameView, saveView, sendReminder, togglePin, updateView, type BulkOp } from "@/server/actions";
+import type { InvoiceRow, PipelineData, SavedView } from "@/server/queries";
+import { TagChip } from "@/components/invoice/tags";
 
 type View = "all" | "open" | "overdue" | "drafts" | "scheduled" | "paid";
 const VIEWS: { value: View; label: string; test: (r: InvoiceRow) => boolean }[] = [
@@ -38,35 +39,53 @@ const GROUPS: { key: string; label: string; test: (r: InvoiceRow) => boolean }[]
 ];
 const VIEW_FOR: Record<PipelineKey, View> = { draft: "drafts", open: "open", overdue: "overdue", paid: "paid" };
 
-export function InvoicesView({ rows, pipeline, initialView, fresh, initialQ, categories = [] }: { rows: InvoiceRow[]; pipeline: PipelineData; initialView: string; fresh?: string; initialQ?: string; categories?: string[] }) {
+export function InvoicesView({ rows, pipeline, initialView, fresh, initialQ, categories = [], savedViews = [], pinnedViews = [] }: { rows: InvoiceRow[]; pipeline: PipelineData; initialView: string; fresh?: string; initialQ?: string; categories?: string[]; savedViews?: SavedView[]; pinnedViews?: string[] }) {
   const home = useWorkspaceCurrency() as Currency;
   const router = useRouter();
   const sheet = useInvoiceSheet();
   const toast = useToast();
-  const [view, setView] = useState<View>((VIEWS.find((v) => v.value === initialView)?.value ?? "all") as View);
-  const [q, setQ] = useState(initialQ ?? "");
+  const startSaved = savedViews.find((v) => `sv:${v.id}` === initialView);
+  const [view, setView] = useState<View>(((startSaved?.base ?? VIEWS.find((v) => v.value === initialView)?.value) ?? "all") as View);
+  // The tab that's highlighted: a built-in view, or "sv:<id>" for a saved one
+  const [tab, setTab] = useState<string>(startSaved ? initialView : view);
+  const [q, setQ] = useState(initialQ ?? startSaved?.q ?? "");
+  const [tagF, setTagF] = useState<string[]>(startSaved?.tags ?? []);
+  const [catF, setCatF] = useState<string[]>(startSaved?.categories ?? []);
+  const [naming, setNaming] = useState<null | "new" | "rename">(null);
+  const allTags = useMemo(() => [...new Set(rows.flatMap((r) => r.tags))].sort((a, b) => a.localeCompare(b)), [rows]);
   const [grouped, setGrouped] = useState(true);
   const [closed, setClosed] = useState<Set<string>>(new Set());
   // Selection for bulk actions. Shift-click selects everything between the last click and this one.
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const lastPick = useRef<string | null>(null);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- follow ?view= when a pin or the pipeline links here
-  useEffect(() => setView((VIEWS.find((v) => v.value === initialView)?.value ?? "all") as View), [initialView]);
+  // Follow ?view= when a pin, the pipeline or the sidebar links here (adjusting state while rendering, no effect)
+  const [seenView, setSeenView] = useState(initialView);
+  if (initialView !== seenView) {
+    setSeenView(initialView);
+    const sv = savedViews.find((v) => `sv:${v.id}` === initialView);
+    if (sv) applySaved(sv);
+    else {
+      setView((VIEWS.find((v) => v.value === initialView)?.value ?? "all") as View);
+      setTab(VIEWS.find((v) => v.value === initialView)?.value ?? "all");
+    }
+  }
 
   const filtered = useMemo(() => {
     const test = VIEWS.find((v) => v.value === view)!.test;
     const needle = q.trim().toLowerCase();
     return rows.filter(test).filter((r) => {
+      if (tagF.length && !tagF.every((t) => r.tags.includes(t))) return false;
+      if (catF.length && !catF.includes(r.category ?? "")) return false;
       if (!needle) return true;
       const m = needle.match(/^([<>=])\s*(\d+(?:\.\d+)?)$/);
       if (m) {
         const n = parseFloat(m[2]) * 100;
         return m[1] === ">" ? r.total > n : m[1] === "<" ? r.total < n : r.total === n;
       }
-      return `${r.number} ${r.customer} ${r.category ?? ""}`.toLowerCase().includes(needle);
+      return `${r.number} ${r.customer} ${r.category ?? ""} ${r.tags.join(" ")}`.toLowerCase().includes(needle);
     });
-  }, [rows, view, q]);
+  }, [rows, view, q, tagF, catF]);
 
   const allPicked = filtered.length > 0 && filtered.every((r) => picked.has(r.id));
   function pick(id: string, range: boolean) {
@@ -110,8 +129,43 @@ export function InvoicesView({ rows, pipeline, initialView, fresh, initialQ, cat
     return () => removeEventListener("keydown", onKey);
   });
 
+  function applySaved(sv: SavedView) {
+    setView(sv.base as View);
+    setTab(`sv:${sv.id}`);
+    setQ(sv.q);
+    setTagF(sv.tags);
+    setCatF(sv.categories);
+  }
+  function chooseTab(t: string) {
+    const sv = savedViews.find((v) => `sv:${v.id}` === t);
+    if (sv) {
+      applySaved(sv);
+      const url = new URL(location.href);
+      url.searchParams.set("view", t);
+      history.replaceState(history.state, "", url);
+      return;
+    }
+    // Leaving a saved view clears its filters; moving between built-in tabs keeps your search
+    if (tab.startsWith("sv:")) {
+      setQ("");
+      setTagF([]);
+      setCatF([]);
+    }
+    changeView(t as View);
+  }
+  const current = savedViews.find((v) => `sv:${v.id}` === tab);
+  async function updateCurrent() {
+    if (!current) return;
+    await updateView(current.id, { name: current.name, base: view, q, tags: tagF, categories: catF });
+    toast({ title: `${current.name} updated` });
+    router.refresh();
+  }
+  const filtering = !!(q.trim() || tagF.length || catF.length);
+  const unsaved = filtering && (!current || current.q !== q || current.base !== view || current.tags.join() !== tagF.join() || current.categories.join() !== catF.join());
+
   function changeView(v: View) {
     setView(v);
+    setTab(v);
     const url = new URL(location.href);
     if (v === "all") url.searchParams.delete("view");
     else url.searchParams.set("view", v);
@@ -150,13 +204,85 @@ export function InvoicesView({ rows, pipeline, initialView, fresh, initialQ, cat
         </div>
       </div>
 
-      <Tabs value={view} onChange={changeView} tabs={VIEWS.map((v) => ({ value: v.value, label: v.label, count: rows.filter(v.test).length }))} />
+      <Tabs
+        value={tab}
+        onChange={chooseTab}
+        tabs={[
+          ...VIEWS.map((v) => ({ value: v.value, label: v.label, count: rows.filter(v.test).length })),
+          ...savedViews.map((sv) => ({ value: `sv:${sv.id}`, label: sv.name, count: countSaved(rows, sv) })),
+        ]}
+      />
 
       <div className="toolbar">
         <label className="field-s">
           <Icon name="search" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search invoices, or try >500" aria-label="Search invoices by customer, number or amount" title="Search by customer, invoice number or amount. Type >500 for amounts over 500." />
         </label>
+        <Menu>
+          <MenuTrigger>
+            <Button size="sm" variant={tagF.length || catF.length ? "secondary" : "ghost"} icon="tag">
+              Filter{tagF.length + catF.length ? ` · ${tagF.length + catF.length}` : ""}
+            </Button>
+          </MenuTrigger>
+          <MenuContent>
+            <MenuLabel>Tags</MenuLabel>
+            {allTags.length === 0 && <div className="iv-menu-label">No tags yet. Add them from an invoice.</div>}
+            {allTags.map((t) => (
+              <MenuItem key={t} closeOnClick={false} onClick={() => setTagF((f) => (f.includes(t) ? f.filter((x) => x !== t) : [...f, t]))}>
+                <span className="flt-check" data-on={tagF.includes(t) || undefined}><Icon name="check" size={12} /></span>
+                {t}
+              </MenuItem>
+            ))}
+            <MenuSeparator />
+            <MenuLabel>Categories</MenuLabel>
+            {categories.map((c) => (
+              <MenuItem key={c} closeOnClick={false} onClick={() => setCatF((f) => (f.includes(c) ? f.filter((x) => x !== c) : [...f, c]))}>
+                <span className="flt-check" data-on={catF.includes(c) || undefined}><Icon name="check" size={12} /></span>
+                <span className="cat-dot" style={{ background: tintFor(c)[1] }} />
+                {c}
+              </MenuItem>
+            ))}
+          </MenuContent>
+        </Menu>
+        {unsaved && (
+          <Button size="sm" variant="ghost" icon="plus" onClick={() => setNaming("new")}>
+            Save as a view
+          </Button>
+        )}
+        {current && (
+          <Menu>
+            <MenuTrigger>
+              <Button size="sm" variant="ghost" iconOnly icon="more" aria-label={`Options for the ${current.name} view`} />
+            </MenuTrigger>
+            <MenuContent>
+              <MenuLabel>{current.name}</MenuLabel>
+              {unsaved && <MenuItem onClick={() => updateCurrent()}><Icon name="check" />Update with these filters</MenuItem>}
+              <MenuItem onClick={() => setNaming("rename")}><Icon name="pencil" />Rename</MenuItem>
+              <MenuItem
+                onClick={async () => {
+                  const r = await togglePin({ kind: "view", ref: `sv:${current.id}`, label: current.name });
+                  toast({ title: r.pinned ? `${current.name} pinned to the sidebar` : `${current.name} unpinned` });
+                  router.refresh();
+                }}
+              >
+                <Icon name="pin" />
+                {pinnedViews.includes(`sv:${current.id}`) ? "Unpin from sidebar" : "Pin to sidebar"}
+              </MenuItem>
+              <MenuSeparator />
+              <MenuItem
+                onClick={async () => {
+                  await deleteView(current.id);
+                  toast({ title: `${current.name} view deleted` });
+                  chooseTab("all");
+                  router.refresh();
+                }}
+              >
+                <Icon name="trash" />
+                Delete view
+              </MenuItem>
+            </MenuContent>
+          </Menu>
+        )}
         <span className="sp" />
         <Switch checked={grouped} onCheckedChange={setGrouped} label={<span className="whitespace-nowrap text-[13px] text-text-2">Group by status</span>} />
         <Tooltip label="Download this view as a spreadsheet">
@@ -166,6 +292,19 @@ export function InvoicesView({ rows, pipeline, initialView, fresh, initialQ, cat
           </a>
         </Tooltip>
       </div>
+
+      {(tagF.length > 0 || catF.length > 0) && (
+        <div className="flt-row">
+          {tagF.map((t) => (
+            <span key={t} className="flt-chip"><Icon name="tag" size={12} />{t}<button type="button" aria-label={`Remove filter ${t}`} onClick={() => setTagF(tagF.filter((x) => x !== t))}><Icon name="x" size={11} /></button></span>
+          ))}
+          {catF.map((c) => (
+            <span key={c} className="flt-chip"><span className="cat-dot" style={{ background: tintFor(c)[1] }} />{c}<button type="button" aria-label={`Remove filter ${c}`} onClick={() => setCatF(catF.filter((x) => x !== c))}><Icon name="x" size={11} /></button></span>
+          ))}
+          <button type="button" className="iv-link text-[13px]" onClick={() => { setTagF([]); setCatF([]); }}>Clear filters</button>
+          <span className="text-[13px] text-text-2">{filtered.length} of {rows.filter(VIEWS.find((v) => v.value === view)!.test).length}</span>
+        </div>
+      )}
 
       <table className="tbl" data-m="inv">
         <thead>
@@ -228,6 +367,27 @@ export function InvoicesView({ rows, pipeline, initialView, fresh, initialQ, cat
         </tbody>
       </table>
 
+      <ViewNameDialog
+        mode={naming}
+        initial={naming === "rename" ? current?.name ?? "" : ""}
+        onClose={() => setNaming(null)}
+        onSave={async (name) => {
+          if (naming === "rename" && current) {
+            await renameView(current.id, name);
+            toast({ title: `Renamed to ${name}` });
+          } else {
+            const r = await saveView({ name, base: view, q, tags: tagF, categories: catF });
+            if (!r.ok) return r.error;
+            toast({ title: `${name} saved. It's a tab now, and you can pin it.` });
+            router.refresh();
+            setTimeout(() => setTab(`sv:${r.id}`), 300);
+          }
+          setNaming(null);
+          router.refresh();
+          return null;
+        }}
+      />
+
       <BulkBar
         ids={[...picked]}
         rows={rows}
@@ -280,7 +440,15 @@ function GroupRows({
                   <span><b>{r.customer}</b><small>{r.number}</small></span>
                 </span>
               </td>
-              <td><span className="catg"><i style={{ background: tintFor(r.category ?? "General")[1] }} />{r.category}</span></td>
+              <td>
+                <span className="catg"><i style={{ background: tintFor(r.category ?? "General")[1] }} />{r.category}</span>
+                {r.tags.length > 0 && (
+                  <span className="row-tags">
+                    {r.tags.slice(0, 2).map((t) => <TagChip key={t} tag={t} />)}
+                    {r.tags.length > 2 && <span className="text-[11px] text-text-2">+{r.tags.length - 2}</span>}
+                  </span>
+                )}
+              </td>
               <td className={r.status === "overdue" ? "late" : "text-text-2"}>{r.due}</td>
               <td><StatusPill status={r.status} /></td>
               <td className="r">
@@ -321,6 +489,7 @@ function GroupRows({
 
 /** Floats up when invoices are selected. Each action says what it will do to how many before it runs. */
 function BulkBar({ ids, rows, categories, onClear, onDone }: { ids: string[]; rows: InvoiceRow[]; categories: string[]; onClear: () => void; onDone: () => void }) {
+  const allTags = [...new Set(rows.flatMap((r) => r.tags))];
   const toast = useToast();
   const reduce = useReducedMotion();
   const [confirm, setConfirm] = useState<null | "paid" | "cancel" | "delete">(null);
@@ -377,6 +546,32 @@ function BulkBar({ ids, rows, categories, onClear, onDone }: { ids: string[]; ro
                 ))}
               </MenuContent>
             </Menu>
+            <Popover>
+              <PopoverTrigger>
+                <Button size="sm" variant="ghost" icon="tag" disabled={busy}>Tag</Button>
+              </PopoverTrigger>
+              <PopoverContent width={240} align="center">
+                <form
+                  className="bulk-tag"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const v = new FormData(e.currentTarget).get("tag")?.toString().trim();
+                    if (v) run("tag", v, (d) => `Tagged ${n(d)} “${v}”`);
+                  }}
+                >
+                  <input name="tag" autoFocus maxLength={24} placeholder="Add a tag to all" aria-label="Tag to add" className="iv-input" />
+                </form>
+                {allTags.length > 0 && (
+                  <div className="bulk-tag-list">
+                    {allTags.slice(0, 8).map((t) => (
+                      <button key={t} type="button" className="iv-menu-item w-full text-left" onClick={() => run("tag", t, (d) => `Tagged ${n(d)} “${t}”`)}>
+                        <Icon name="tag" />{t}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </PopoverContent>
+            </Popover>
             <a className="iv-btn iv-btn--ghost iv-btn--sm" href={`/invoices/export?ids=${ids.join(",")}`} download>
               <Icon name="download" />
               Export
@@ -416,5 +611,48 @@ function BulkBar({ ids, rows, categories, onClear, onDone }: { ids: string[]; ro
         )}
       </Dialog>
     </>
+  );
+}
+
+function countSaved(rows: InvoiceRow[], sv: SavedView) {
+  const test = VIEWS.find((v) => v.value === sv.base)?.test ?? (() => true);
+  const needle = sv.q.trim().toLowerCase();
+  return rows.filter(test).filter((r) =>
+    sv.tags.every((t) => r.tags.includes(t)) &&
+    (!sv.categories.length || sv.categories.includes(r.category ?? "")) &&
+    (!needle || `${r.number} ${r.customer} ${r.category ?? ""} ${r.tags.join(" ")}`.toLowerCase().includes(needle)),
+  ).length;
+}
+
+function ViewNameDialog({ mode, initial, onClose, onSave }: { mode: null | "new" | "rename"; initial: string; onClose: () => void; onSave: (name: string) => Promise<string | null> }) {
+  const [name, setName] = useState(initial);
+  const [error, setError] = useState("");
+  const [was, setWas] = useState(mode);
+  if (mode !== was) {
+    setWas(mode);
+    setName(initial);
+    setError("");
+  }
+  return (
+    <Dialog open={!!mode} onOpenChange={(o) => !o && onClose()}>
+      {mode && (
+        <DialogContent
+          title={mode === "new" ? "Save this view" : "Rename view"}
+          description={mode === "new" ? "Your filters and search become a tab on this page, shared with your team. Pin it to keep it in the sidebar." : "Everyone in the workspace sees the new name."}
+          footer={
+            <>
+              <span className="iv-sp" />
+              <DialogClose render={<Button>Cancel</Button>} />
+              <Button variant="primary" icon="check" onClick={async () => { const e = await onSave(name); if (e) setError(e); }}>{mode === "new" ? "Save view" : "Rename"}</Button>
+            </>
+          }
+        >
+          <form onSubmit={async (e) => { e.preventDefault(); const er = await onSave(name); if (er) setError(er); }}>
+            <TextField label="Name" autoFocus maxLength={40} placeholder="e.g. Q4 retainers" value={name} onChange={(e) => setName(e.target.value)} />
+          </form>
+          {error && <div className="form-error"><Icon name="alert" />{error}</div>}
+        </DialogContent>
+      )}
+    </Dialog>
   );
 }

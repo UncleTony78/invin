@@ -29,7 +29,13 @@ export type InvoiceInput = {
   bankAccountId: string;
   lines: { description: string; quantity: number; unitPrice: number }[];
   email?: { to: string; subject: string; message: string; attachPdf: boolean };
+  /** Custom field values by field id */
+  fields?: Record<string, string>;
 };
+
+/** Keep only values for fields the workspace has, trimmed and short. */
+export const cleanFields = (ws: Ws, fields: Record<string, string> | undefined) =>
+  Object.fromEntries(ws.customFields.map((f) => [f.id, (fields?.[f.id] ?? "").trim().slice(0, 120)]).filter(([, v]) => v));
 
 export const today = () => isoDate(new Date());
 export const dueFrom = (issue: string, termsDays: number) => {
@@ -61,7 +67,7 @@ export async function issueInvoice(o: {
       .values({
         workspaceId: ws.id, number, customerId: o.customer.id, status: sending ? "sent" : "draft", currency: o.customer.currency, category: o.input.category || "General",
         issueDate: sending ? issue : null, dueDate: sending ? due : null, termsDays: o.input.termsDays, template: o.input.template, brandColor: o.input.brandColor,
-        bankAccountId: o.input.bankAccountId || null, note: o.input.note, vatBps: o.input.vatBps, ...totals, createdBy: o.createdBy, seriesId: o.seriesId ?? null,
+        bankAccountId: o.input.bankAccountId || null, note: o.input.note, vatBps: o.input.vatBps, ...totals, createdBy: o.createdBy, seriesId: o.seriesId ?? null, fields: cleanFields(o.ws, o.input.fields),
         customerSnapshot: sending ? { name: o.customer.name, email: o.customer.email, address: o.customer.address } : null, sentAt: sending ? new Date() : null,
       })
       .returning();

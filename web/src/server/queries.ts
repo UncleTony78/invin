@@ -25,6 +25,7 @@ export type InvoiceRow = {
   due: string;
   issueDate: string | null;
   dueDate: string | null;
+  tags: string[];
 };
 
 export const today = () => isoDate(new Date());
@@ -55,6 +56,7 @@ export async function listInvoices(session: Session): Promise<InvoiceRow[]> {
       due: dueText(inv.status, inv.dueDate, t),
       issueDate: inv.issueDate,
       dueDate: inv.dueDate,
+      tags: inv.tags,
     };
   });
 }
@@ -112,6 +114,10 @@ export type InvoiceDetail = {
   payments: { id: string; amount: number; refunded: number; method: string; receivedOn: string; reference: string; receiptSentAt: string | null }[];
   /** The customer's credit in this invoice's currency */
   credit: number;
+  tags: string[];
+  /** Every tag used in the workspace, for suggestions */
+  allTags: string[];
+  fields: { id: string; label: string; print: boolean; value: string }[];
 };
 
 export async function getInvoiceDetail(session: Session, id: string): Promise<InvoiceDetail | null> {
@@ -143,7 +149,7 @@ export async function getInvoiceDetail(session: Session, id: string): Promise<In
     row: {
       id: inv.id, number: inv.number, customer: customer.name, customerId: customer.id, category: inv.category, currency: inv.currency,
       total: inv.total, paid: inv.amountPaid, left: Math.max(0, inv.total - inv.amountPaid), stored: inv.status, status: d.status, daysLate: d.daysLate,
-      due: dueText(inv.status, inv.dueDate, t), issueDate: inv.issueDate, dueDate: inv.dueDate,
+      due: dueText(inv.status, inv.dueDate, t), issueDate: inv.issueDate, dueDate: inv.dueDate, tags: inv.tags,
     },
     invoice: { number: inv.number, issueDate: inv.issueDate, dueDate: inv.dueDate, currency: inv.currency, vatBps: inv.vatBps, note: inv.note, template: inv.template, brandColor: inv.brandColor, publicToken: inv.publicToken, category: inv.category, termsDays: inv.termsDays, bankAccountId: inv.bankAccountId },
     customer: snap,
@@ -177,6 +183,9 @@ export async function getInvoiceDetail(session: Session, id: string): Promise<In
       refunded: refundRows.filter((r) => r.paymentId === p.id).reduce((a, r) => a + r.amount, 0),
     })),
     credit: Number(credit),
+    tags: inv.tags,
+    allTags: await workspaceTags(session),
+    fields: ws.customFields.map((f) => ({ ...f, value: inv.fields[f.id] ?? "" })),
   };
 }
 
@@ -385,4 +394,19 @@ export async function insights(session: Session) {
     .slice(0, 5)
     .map(([c, g]) => ({ label: c, sub: `${g.count} invoice${g.count === 1 ? "" : "s"}`, value: g.value, share: g.value / total, href: `/invoices?q=${encodeURIComponent(c)}` }));
   return { customers, services, categories, total: recent.length ? total : 0, currency: home };
+}
+
+/* ---------------- Organising ---------------- */
+/** Distinct tags across the workspace's invoices, most used first. */
+export async function workspaceTags(session: Session) {
+  const rows = await db.select({ tags: s.invoices.tags }).from(s.invoices).where(eq(s.invoices.workspaceId, session.workspace.id));
+  const count = new Map<string, number>();
+  for (const r of rows) for (const t of r.tags) count.set(t, (count.get(t) ?? 0) + 1);
+  return [...count.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([t]) => t);
+}
+
+export type SavedView = { id: string; name: string; base: string; q: string; tags: string[]; categories: string[] };
+export async function listSavedViews(session: Session): Promise<SavedView[]> {
+  const rows = await db.select().from(s.savedViews).where(eq(s.savedViews.workspaceId, session.workspace.id)).orderBy(asc(s.savedViews.createdAt));
+  return rows.map((v) => ({ id: v.id, name: v.name, base: v.base, q: v.q, tags: v.tags, categories: v.categories }));
 }

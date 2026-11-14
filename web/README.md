@@ -34,7 +34,9 @@ Sign-in and onboarding: passwordless sign-in with a 6-digit email code (Better A
 
 Phase 2 (built): recurring series (`/recurring`), automatic reminders and receipts (background runner in `src/instrumentation.ts`; production calls `/api/cron` with `CRON_SECRET`), notifications (bell), refunds, customer credit from overpayments (used on the next invoice), bulk actions on the invoice list, invoice CSV export (`/invoices/export`), customer CSV import and export (`/customers/export`).
 
-Next: saved views and tags, custom fields and more invoice designs, email notification digests, inviting teammates, Google sign-in, then Phase 3 (reports, statements, estimates).
+Organising (built): tags on invoices (panel, list chips, filter, bulk tag), saved views (filters saved as shared tabs, pinnable to the sidebar), custom invoice fields (defined in Settings, filled in the editor or panel, printed for customers only when marked).
+
+Next: email notification digests, more invoice designs, inviting teammates, Google sign-in, then Phase 3 (reports, statements, estimates).
 
 ## Component library (Phase 0)
 

@@ -27,6 +27,8 @@ export type PublicInvoice = {
   lines: { description: string; quantity: number; unitPrice: number }[];
   bank: { bank: string; rows: [string, string][] } | null;
   pendingClaim: { amount: number; paidOn: string; reference: string } | null;
+  /** Custom fields the business chose to show customers */
+  fields: [string, string][];
 };
 
 export async function getPublicInvoice(token: string): Promise<PublicInvoice | null> {
@@ -61,6 +63,7 @@ export async function getPublicInvoice(token: string): Promise<PublicInvoice | n
     left: Math.max(0, inv.total - inv.amountPaid),
     vatBps: inv.vatBps,
     note: inv.note,
+    fields: ws.customFields.filter((f) => f.print && inv.fields[f.id]).map((f) => [f.label, inv.fields[f.id]] as [string, string]),
     template: inv.template,
     brandColor: inv.brandColor,
     business: { name: ws.name, mark: ws.mark, address: ws.address, email: ws.email },

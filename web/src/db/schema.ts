@@ -79,6 +79,8 @@ export const workspaces = pgTable("workspaces", {
   work: text("work").notNull().default(""),
   /** The categories this workspace bills under, in the order they were added */
   categories: jsonb("categories").$type<string[]>().notNull().default(["General"]),
+  /** Extra fields on every invoice, e.g. "PO number". `print` decides if customers see it. */
+  customFields: jsonb("custom_fields").$type<{ id: string; label: string; print: boolean }[]>().notNull().default([]),
   /* Automation (Phase 2) */
   remindersOn: boolean("reminders_on").notNull().default(true),
   /** Days relative to the due date: -3 = three days before, 0 = on the day, 7 = a week late */
@@ -166,6 +168,10 @@ export const invoices = pgTable(
     sentAt: timestamp("sent_at", { withTimezone: true }),
     /** Set when a recurring series made this invoice */
     seriesId: text("series_id"),
+    /** Free labels for finding and grouping, e.g. "Q4", "Website project" */
+    tags: jsonb("tags").$type<string[]>().notNull().default([]),
+    /** Values for the workspace's custom fields, by field id */
+    fields: jsonb("fields").$type<Record<string, string>>().notNull().default({}),
     remindersPaused: boolean("reminders_paused").notNull().default(false),
   },
   (t) => [uniqueIndex("invoices_ws_number").on(t.workspaceId, t.number), uniqueIndex("invoices_token").on(t.publicToken), index("invoices_ws_status").on(t.workspaceId, t.status)],
@@ -366,3 +372,17 @@ export const credits = pgTable(
   },
   (t) => [index("credits_customer").on(t.customerId, t.currency)],
 );
+
+/** A named filter on the invoice list, shared with the whole workspace. Can be pinned to the sidebar. */
+export const savedViews = pgTable("saved_views", {
+  id: id(),
+  workspaceId: text("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  /** The built-in tab it starts from: all, open, overdue, drafts, scheduled, paid */
+  base: text("base").notNull().default("all"),
+  q: text("q").notNull().default(""),
+  tags: jsonb("tags").$type<string[]>().notNull().default([]),
+  categories: jsonb("categories").$type<string[]>().notNull().default([]),
+  createdBy: text("created_by"),
+  createdAt: createdAt(),
+});

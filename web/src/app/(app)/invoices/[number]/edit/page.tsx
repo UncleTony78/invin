@@ -34,9 +34,10 @@ export default async function EditDraftPage({ params }: PageProps<"/invoices/[nu
         brandColor: d.invoice.brandColor,
         bankAccountId: d.invoice.bankAccountId,
         lines: d.lines,
+        fields: Object.fromEntries(d.fields.map((x) => [x.id, x.value])),
       }}
       business={{ name: ws.name, mark: ws.mark, address: ws.address, email: ws.email }}
-      defaults={{ template: ws.template, brandColor: ws.brandColor, remindersNote: remindersNote(ws.remindersOn, ws.reminderOffsets), categories: ws.categories }}
+      defaults={{ template: ws.template, brandColor: ws.brandColor, remindersNote: remindersNote(ws.remindersOn, ws.reminderOffsets), categories: ws.categories, customFields: ws.customFields }}
       sender={session.member.name.split(" ")[0]}
       customers={customers.map((c) => ({ id: c.id, name: c.name, email: c.email, address: c.address, currency: c.currency, termsDays: c.termsDays }))}
       accounts={accounts.map((a) => ({ id: a.id, currency: a.currency, bank: a.bank, rows: a.rows }))}

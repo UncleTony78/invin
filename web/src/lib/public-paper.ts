@@ -15,6 +15,7 @@ export function toPaper(inv: PublicInvoice) {
     vatRate: inv.vatBps / 10000,
     paid: inv.stored === "partial" ? inv.paid / 100 : 0,
     note: inv.note,
+    fields: inv.fields,
     settled: inv.stored === "paid" ? ("paid" as const) : inv.stored === "cancelled" ? ("cancelled" as const) : undefined,
   };
 }

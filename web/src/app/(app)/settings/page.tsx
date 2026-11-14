@@ -24,7 +24,7 @@ export default async function SettingsPage() {
         : ({ mode: "off" } as const);
   return (
     <SettingsView
-      automation={{ remindersOn: w.remindersOn, reminderOffsets: w.reminderOffsets, receiptsOn: w.receiptsOn, categories: w.categories }}
+      automation={{ remindersOn: w.remindersOn, reminderOffsets: w.reminderOffsets, receiptsOn: w.receiptsOn, categories: w.categories, customFields: w.customFields }}
       business={{ name: w.name, mark: w.mark, address: w.address, email: w.email, brandColor: w.brandColor, template: w.template, numberPrefix: w.numberPrefix, nextNumber: w.nextNumber }}
       accounts={accounts.map((a) => ({ id: a.id, bank: a.bank, currency: a.currency, rows: a.rows }))}
       team={team.map((m) => ({ id: m.id, name: m.name, email: m.email, role: m.role, you: m.id === session.member.id }))}

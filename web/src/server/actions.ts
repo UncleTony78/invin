@@ -4,7 +4,7 @@ import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db, schema as s } from "@/db";
 import { amountProblem, computeTotals, isoDate } from "@/lib/invoice-math";
-import { applyCreditTo, emailInvoice, issueInvoice, rememberCategory, remindCustomer, sendReceipt, type InvoiceInput as Input } from "./billing";
+import { applyCreditTo, cleanFields, emailInvoice, issueInvoice, rememberCategory, remindCustomer, sendReceipt, type InvoiceInput as Input } from "./billing";
 import { formatMoney, type Currency } from "@/lib/format";
 import { getInvoiceDetail, today } from "./queries";
 import { requireSession } from "./session";
@@ -201,7 +201,7 @@ export async function updateDraft(id: string, input: InvoiceInput, mode: "draft"
     await tx
       .update(s.invoices)
       .set({
-        customerId: customer.id, currency: customer.currency, category: input.category || "General", termsDays: input.termsDays, template: input.template,
+        fields: cleanFields(session.workspace, input.fields), customerId: customer.id, currency: customer.currency, category: input.category || "General", termsDays: input.termsDays, template: input.template,
         brandColor: input.brandColor, bankAccountId: input.bankAccountId || null, note: input.note, vatBps: input.vatBps, ...totals,
         status: sending ? "sent" : "draft", issueDate: sending ? issue : null, dueDate: sending ? due : null,
         customerSnapshot: sending ? { name: customer.name, email: customer.email, address: customer.address } : null, sentAt: sending ? new Date() : null,
@@ -243,7 +243,7 @@ export async function dismissClaim(claimId: string) {
 }
 
 /* ---------------- Bulk actions on the invoice list ---------------- */
-export type BulkOp = "remind" | "category" | "paid" | "cancel" | "delete";
+export type BulkOp = "remind" | "category" | "paid" | "cancel" | "delete" | "tag";
 
 /**
  * One action on many invoices. Each invoice is checked on its own, so a mixed selection
@@ -271,6 +271,15 @@ export async function bulkInvoices(ids: string[], op: BulkOp, arg?: string) {
     await db.update(s.invoices).set({ category: cat }).where(inArray(s.invoices.id, invs.map((i) => i.id)));
     await rememberCategory(db, session.workspace, cat);
     done = invs.length;
+  }
+  if (op === "tag") {
+    const tag = normTag(arg ?? "");
+    if (!tag) return { done: 0, skipped: invs.length };
+    for (const inv of invs) {
+      if (inv.tags.some((t) => t.toLowerCase() === tag.toLowerCase())) continue;
+      await db.update(s.invoices).set({ tags: [...inv.tags, tag].slice(0, 10) }).where(eq(s.invoices.id, inv.id));
+      done++;
+    }
   }
   if (op === "paid") {
     for (const inv of invs.filter(open)) {
@@ -301,4 +310,65 @@ export async function bulkInvoices(ids: string[], op: BulkOp, arg?: string) {
   }
   refresh();
   return { done, skipped: invs.length - done };
+}
+
+/* ---------------- Tags ---------------- */
+const normTag = (t: string) => t.trim().replace(/\s+/g, " ").slice(0, 24);
+
+/** Replace an invoice's tags. Up to 10, each short, no duplicates (ignoring case). */
+export async function setInvoiceTags(invoiceId: string, tags: string[]) {
+  const { inv } = await ownInvoice(invoiceId);
+  const clean: string[] = [];
+  for (const t of tags.map(normTag)) if (t && !clean.some((x) => x.toLowerCase() === t.toLowerCase())) clean.push(t);
+  await db.update(s.invoices).set({ tags: clean.slice(0, 10) }).where(eq(s.invoices.id, inv.id));
+  refresh();
+  return { tags: clean.slice(0, 10) };
+}
+
+/** Save the values of custom fields on any invoice (they're reference details, so sent invoices can change too). */
+export async function setInvoiceFields(invoiceId: string, fields: Record<string, string>) {
+  const { session, inv } = await ownInvoice(invoiceId);
+  await db.update(s.invoices).set({ fields: cleanFields(session.workspace, fields) }).where(eq(s.invoices.id, inv.id));
+  refresh();
+}
+
+/* ---------------- Saved views ---------------- */
+export type ViewInput = { name: string; base: string; q: string; tags: string[]; categories: string[] };
+
+export async function saveView(input: ViewInput) {
+  const session = await requireSession();
+  const name = input.name.trim().slice(0, 40);
+  if (!name) return { ok: false as const, error: "Give the view a name." };
+  const [v] = await db
+    .insert(s.savedViews)
+    .values({ workspaceId: session.workspace.id, name, base: input.base, q: input.q.trim().slice(0, 80), tags: input.tags.slice(0, 10), categories: input.categories.slice(0, 20), createdBy: session.member.id })
+    .returning();
+  refresh();
+  return { ok: true as const, id: v.id };
+}
+
+/** Replace a view's filters (keeps its id, so pins and links still work). */
+export async function updateView(id: string, input: ViewInput) {
+  const session = await requireSession();
+  await db
+    .update(s.savedViews)
+    .set({ base: input.base, q: input.q.trim().slice(0, 80), tags: input.tags.slice(0, 10), categories: input.categories.slice(0, 20) })
+    .where(and(eq(s.savedViews.id, id), eq(s.savedViews.workspaceId, session.workspace.id)));
+  refresh();
+}
+
+export async function renameView(id: string, name: string) {
+  const session = await requireSession();
+  const n = name.trim().slice(0, 40);
+  if (!n) return;
+  await db.update(s.savedViews).set({ name: n }).where(and(eq(s.savedViews.id, id), eq(s.savedViews.workspaceId, session.workspace.id)));
+  await db.update(s.pins).set({ label: n }).where(and(eq(s.pins.kind, "view"), eq(s.pins.ref, `sv:${id}`)));
+  refresh();
+}
+
+export async function deleteView(id: string) {
+  const session = await requireSession();
+  await db.delete(s.savedViews).where(and(eq(s.savedViews.id, id), eq(s.savedViews.workspaceId, session.workspace.id)));
+  await db.delete(s.pins).where(and(eq(s.pins.kind, "view"), eq(s.pins.ref, `sv:${id}`)));
+  refresh();
 }

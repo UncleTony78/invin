@@ -34,6 +34,7 @@ const TERMS = [
 type Terms = (typeof TERMS)[number]["value"];
 
 export type DraftInput = {
+  fields?: Record<string, string>;
   id: string; customerId: string; issueDate: string; termsDays: number; category: string; vatBps: number; note: string;
   template: string; brandColor: string; bankAccountId: string | null; lines: { description: string; quantity: number; unitPrice: number }[];
 };
@@ -51,7 +52,7 @@ export function EditorView({
   /** Customer id from ?customer= (e.g. "New invoice" on a customer's page). */
   preselect?: string;
   business: { name: string; mark: string; address: string; email: string };
-  defaults: { template: string; brandColor: string; category?: string; remindersNote?: string; categories?: string[] };
+  defaults: { template: string; brandColor: string; category?: string; remindersNote?: string; categories?: string[]; customFields?: { id: string; label: string; print: boolean }[] };
   sender: string;
   customers: Customer[];
   accounts: Account[];
@@ -79,6 +80,8 @@ export function EditorView({
   const [brand, setBrand] = useState(draft?.brandColor ?? defaults.brandColor);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState<"idle" | "draft">("idle");
+  const customFields = defaults.customFields ?? [];
+  const [fieldVals, setFieldVals] = useState<Record<string, string>>(draft?.fields ?? {});
   const canRepeat = !draft && !series;
   const [repeat, setRepeat] = useState(!!startRepeating && canRepeat);
   const [schedule, setSchedule] = useState<Schedule>(DEFAULT_SCHEDULE);
@@ -146,6 +149,7 @@ export function EditorView({
   const input = {
     customerId: customer.id, issueDate: issue, termsDays: Number(terms), category, vatBps: vat ? 750 : 0, note, template, brandColor: brand, bankAccountId: accountId,
     lines: parsed.filter((l) => l.description.trim() || l.unitPrice > 0),
+    fields: fieldVals,
   };
 
   async function saveSeries() {
@@ -179,6 +183,7 @@ export function EditorView({
     items: parsed.map((l) => ({ description: l.description, quantity: l.quantity, price: l.unitPrice / 100 })),
     vatRate: vat ? 0.075 : 0,
     note,
+    fields: customFields.filter((f) => f.print && fieldVals[f.id]?.trim()).map((f) => [f.label, fieldVals[f.id].trim()] as [string, string]),
   };
 
   return (
@@ -224,6 +229,24 @@ export function EditorView({
             </div>
           </div>
         </section>
+
+        {customFields.length > 0 && !series && (
+          <section className="ed-sec">
+            <header><h2>Details</h2><p>Your own fields. Ones marked private stay off the invoice.</p></header>
+            <div className="fgrid">
+              {customFields.map((f) => (
+                <TextField
+                  key={f.id}
+                  label={f.label}
+                  description={f.print ? "Printed on the invoice" : "Only you see this"}
+                  maxLength={120}
+                  value={fieldVals[f.id] ?? ""}
+                  onChange={(e) => setFieldVals({ ...fieldVals, [f.id]: e.target.value })}
+                />
+              ))}
+            </div>
+          </section>
+        )}
 
         {canRepeat && (
           <section className="ed-sec">

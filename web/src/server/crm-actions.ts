@@ -145,7 +145,7 @@ export async function deleteBankAccount(id: string): Promise<Result> {
 }
 
 /* ---------------- Automation ---------------- */
-export type AutomationInput = { remindersOn: boolean; reminderOffsets: number[]; receiptsOn: boolean; categories: string[] };
+export type AutomationInput = { remindersOn: boolean; reminderOffsets: number[]; receiptsOn: boolean; categories: string[]; customFields: { id: string; label: string; print: boolean }[] };
 
 export async function updateAutomation(input: AutomationInput): Promise<Result> {
   const session = await requireSession();
@@ -155,9 +155,11 @@ export async function updateAutomation(input: AutomationInput): Promise<Result> 
   const cats = [...new Map(input.categories.map((c) => c.trim().replace(/\s+/g, " ")).filter(Boolean).map((c) => [c.toLowerCase(), c])).values()];
   if (cats.length === 0) return { ok: false, error: "Keep at least one category." };
   if (cats.length > 40 || cats.some((c) => c.length > 30)) return { ok: false, error: "Use up to 40 categories, each under 30 characters." };
+  const fields = input.customFields.map((f) => ({ id: f.id || crypto.randomUUID().slice(0, 8), label: f.label.trim().slice(0, 30), print: !!f.print })).filter((f) => f.label);
+  if (fields.length > 8) return { ok: false, error: "Use up to 8 custom fields." };
   await db
     .update(s.workspaces)
-    .set({ remindersOn: !!input.remindersOn, reminderOffsets: offsets, receiptsOn: !!input.receiptsOn, categories: cats })
+    .set({ remindersOn: !!input.remindersOn, reminderOffsets: offsets, receiptsOn: !!input.receiptsOn, categories: cats, customFields: fields })
     .where(eq(s.workspaces.id, session.workspace.id));
   refresh();
   return { ok: true };

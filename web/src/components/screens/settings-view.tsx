@@ -94,6 +94,10 @@ export function SettingsView({ business, automation, accounts, team, email }: { 
         <CategoryList value={auto.categories} onChange={(categories) => setAuto((a) => ({ ...a, categories }))} />
       </Section>
 
+      <Section title="Invoice fields" hint="Extra details you fill in on each invoice, like a PO number or project. Choose which ones customers see.">
+        <FieldList value={auto.customFields} onChange={(customFields) => setAuto((a) => ({ ...a, customFields }))} />
+      </Section>
+
       <Section id="reminders" title="Reminders" hint="Polite emails to customers who haven't paid yet. Each one goes once per invoice, and stops as soon as it's paid.">
         <Switch checked={auto.remindersOn} onCheckedChange={(on) => setAuto((a) => ({ ...a, remindersOn: on }))} label="Send payment reminders for me" />
         <div className="iv-field" data-off={!auto.remindersOn || undefined}>
@@ -336,6 +340,38 @@ function CategoryList({ value, onChange }: { value: string[]; onChange: (v: stri
         <input value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={30} placeholder="Add a category" aria-label="Add a category" />
         {draft.trim() && <Button size="sm" variant="ghost" type="submit">Add</Button>}
       </form>
+    </div>
+  );
+}
+
+function FieldList({ value, onChange }: { value: AutomationInput["customFields"]; onChange: (v: AutomationInput["customFields"]) => void }) {
+  const [draft, setDraft] = useState("");
+  const add = () => {
+    const label = draft.trim().slice(0, 30);
+    if (!label || value.length >= 8 || value.some((f) => f.label.toLowerCase() === label.toLowerCase())) return setDraft("");
+    onChange([...value, { id: Math.random().toString(36).slice(2, 10), label, print: true }]);
+    setDraft("");
+  };
+  return (
+    <div className="grid gap-3">
+      {value.length > 0 && (
+        <ul className="fld-list">
+          {value.map((f) => (
+            <li key={f.id}>
+              <input value={f.label} maxLength={30} aria-label="Field name" onChange={(e) => onChange(value.map((x) => (x.id === f.id ? { ...x, label: e.target.value } : x)))} />
+              <Switch checked={f.print} onCheckedChange={(on) => onChange(value.map((x) => (x.id === f.id ? { ...x, print: on } : x)))} label={<span className="text-[13px] text-text-2">{f.print ? "On the invoice" : "Private"}</span>} />
+              <Button size="sm" variant="ghost" iconOnly icon="trash" aria-label={`Remove ${f.label}`} onClick={() => onChange(value.filter((x) => x.id !== f.id))} />
+            </li>
+          ))}
+        </ul>
+      )}
+      {value.length < 8 && (
+        <form className="field-s" style={{ width: "100%", maxWidth: 320 }} onSubmit={(e) => { e.preventDefault(); add(); }}>
+          <Icon name="plus" />
+          <input value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={30} placeholder="Add a field, e.g. PO number" aria-label="Add a field" />
+          {draft.trim() && <Button size="sm" variant="ghost" type="submit">Add</Button>}
+        </form>
+      )}
     </div>
   );
 }

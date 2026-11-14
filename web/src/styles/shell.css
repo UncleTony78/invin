@@ -544,3 +544,50 @@
   .imp-tag[data-t="bad"] { background: var(--st-failed-bg); color: var(--st-failed); }
   .imp-more { padding: 8px 10px; font-size: var(--fs-12); color: var(--text-2); }
 }
+@layer components {
+  /* Tags */
+  .tag-chip { display: inline-flex; align-items: center; gap: 3px; height: 22px; padding: 0 8px; border-radius: 6px; background: var(--secondary); color: var(--text); font-size: var(--fs-12); white-space: nowrap; animation: cat-in 180ms var(--ease-out); }
+  .tag-chip button { display: grid; place-items: center; width: 16px; height: 16px; margin-right: -4px; border: 0; border-radius: 4px; background: none; color: var(--text-2); cursor: pointer; }
+  .tag-chip button:hover { background: var(--pressed); color: var(--text); }
+  .tag-ed { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-width: 0; }
+  .tag-add { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 6px; border: 1px dashed var(--line-2); background: none; color: var(--text-2); font: inherit; font-size: var(--fs-12); cursor: pointer; transition: color var(--m-in), border-color var(--m-in); }
+  .tag-add:hover { color: var(--text); border-color: var(--text-2); }
+  .tag-in { position: relative; }
+  .tag-in input { height: 24px; width: 140px; padding: 0 8px; border: 0; border-radius: 6px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--focus), 0 0 0 3px var(--focus-halo); font: inherit; font-size: var(--fs-12); color: var(--text); outline: 0; }
+  .tag-sug { position: absolute; top: calc(100% + 4px); left: 0; z-index: 5; display: grid; min-width: 160px; padding: 4px; border-radius: var(--r-md); background: var(--surface); box-shadow: var(--shadow-pop); animation: cat-in 140ms var(--ease-out); }
+  .tag-sug button { text-align: left; padding: 6px 8px; border: 0; border-radius: 6px; background: none; font: inherit; font-size: var(--fs-13); color: var(--text); cursor: pointer; }
+  .tag-sug button:hover { background: var(--hover); }
+  .row-tags { display: inline-flex; gap: 4px; margin-left: 8px; vertical-align: middle; }
+  .row-tags .tag-chip { height: 18px; padding: 0 6px; font-size: 11px; }
+
+  /* Invoice panel: tags and custom fields */
+  .sh-org { margin-top: 14px; display: grid; }
+  .sh-org-row { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 12px; align-items: center; min-height: 38px; border-bottom: 1px solid var(--line); font-size: var(--fs-13); }
+  .sh-org-l { display: flex; align-items: center; gap: 6px; color: var(--text-2); flex-wrap: wrap; }
+  .sh-org-l small { flex-basis: 100%; font-size: 11px; color: var(--text-3); margin-top: -2px; }
+  .sh-org-v { display: flex; align-items: center; gap: 8px; }
+  .sh-org-v input { flex: 1; min-width: 0; height: 30px; padding: 0 8px; margin-left: -8px; border: 0; border-radius: 6px; background: none; font: inherit; color: var(--text); outline: 0; transition: background-color var(--m-in), box-shadow var(--m-in); }
+  .sh-org-v input:hover { background: var(--hover); }
+  .sh-org-v input:focus { background: var(--surface); box-shadow: inset 0 0 0 1px var(--focus), 0 0 0 3px var(--focus-halo); }
+  .sh-org-v input::placeholder { color: var(--text-3); }
+  .sh-org-ok { display: inline-flex; align-items: center; gap: 4px; color: var(--st-paid); font-size: var(--fs-12); animation: cat-in 180ms var(--ease-out); }
+}
+@layer components {
+  /* Filters and saved views */
+  .flt-check { width: 16px; height: 16px; border-radius: 4px; display: grid; place-items: center; box-shadow: inset 0 0 0 1.5px var(--line-2); color: transparent; transition: background-color 120ms ease, box-shadow 120ms ease, color 120ms ease; }
+  .flt-check[data-on] { background: var(--text); box-shadow: none; color: var(--surface); }
+  .flt-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 4px 0 10px; }
+  .flt-chip { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 4px 0 9px; border-radius: var(--r-pill); background: var(--secondary); font-size: var(--fs-13); animation: cat-in 180ms var(--ease-out); }
+  .flt-chip button { width: 20px; height: 20px; display: grid; place-items: center; border: 0; border-radius: 50%; background: none; color: var(--text-2); cursor: pointer; }
+  .flt-chip button:hover { background: var(--pressed); color: var(--text); }
+  .bulk-tag { padding: 2px; }
+  .bulk-tag .iv-input { height: 34px; }
+  .bulk-tag-list { margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--line); max-height: 220px; overflow: auto; }
+}
+@layer components {
+  /* Settings: custom invoice fields */
+  .fld-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .fld-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 4px 4px 4px 12px; border-radius: var(--r-md); box-shadow: inset 0 0 0 1px var(--line-2); animation: cat-in 200ms var(--ease-out); }
+  .fld-list input { height: 32px; border: 0; background: none; font: inherit; color: var(--text); outline: 0; min-width: 0; }
+  .fld-list li:focus-within { box-shadow: inset 0 0 0 1px var(--focus), 0 0 0 3px var(--focus-halo); }
+}

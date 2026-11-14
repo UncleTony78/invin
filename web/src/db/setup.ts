@@ -19,7 +19,7 @@ const db = drizzle(client, { schema: s });
 
 async function main() {
   await migrate(db, { migrationsFolder: "./drizzle" });
-  await client.exec(`TRUNCATE notification_seen, notifications, refunds, credits, reminder_log, series, onboarding, verification, account, session, "user", payment_claims, outbox, pins, events, payments, line_items, invoices, catalog_items, bank_accounts, customers, members, workspaces CASCADE`);
+  await client.exec(`TRUNCATE saved_views, notification_seen, notifications, refunds, credits, reminder_log, series, onboarding, verification, account, session, "user", payment_claims, outbox, pins, events, payments, line_items, invoices, catalog_items, bank_accounts, customers, members, workspaces CASCADE`);
 
   const today = new Date();
   const d = (n: number) => isoDate(today, n);
@@ -32,7 +32,7 @@ async function main() {
   ]);
   const [ws] = await db
     .insert(s.workspaces)
-    .values({ name: "Ada Obi Studio", mark: "AO", address: "Admiralty Way, Lekki, Lagos", email: "ada@adaobi.studio", defaultCurrency: "USD", nextNumber: 145, work: "Design", categories: ["Design", "Retainer", "Consulting", "Content"] })
+    .values({ name: "Ada Obi Studio", mark: "AO", address: "Admiralty Way, Lekki, Lagos", email: "ada@adaobi.studio", defaultCurrency: "USD", nextNumber: 145, work: "Design", categories: ["Design", "Retainer", "Consulting", "Content"], customFields: [{ id: "po", label: "PO number", print: true }, { id: "proj", label: "Internal project", print: false }] })
     .returning();
   const [ada, moses, wemimo] = await db
     .insert(s.members)
@@ -174,6 +174,15 @@ async function main() {
   await db.update(s.invoices).set({ seriesId: haldenS.id }).where(eq(s.invoices.id, halden.id));
 
   await db.insert(s.pins).values([{ workspaceId: ws.id, memberId: ada.id, kind: "view", ref: "overdue", label: "Overdue invoices", position: 0 }]);
+
+  // Tags, a custom field value and a saved view, so the organising tools have something to show
+  const tag = async (n: number, tags: string[], fields: Record<string, string> = {}) => db.update(s.invoices).set({ tags, fields }).where(eq(s.invoices.id, inv(n).id));
+  await tag(142, ["Q4", "Website"], { po: "AC-4471" });
+  await tag(141, ["Q4"], { po: "NS-208" });
+  await tag(138, ["Q4", "Chase"]);
+  await tag(136, ["Chase"]);
+  await tag(140, ["Website"], { proj: "Sprint 3" });
+  await db.insert(s.savedViews).values({ workspaceId: ws.id, name: "To chase", base: "open", tags: ["Chase"], createdBy: ada.id });
 
   // A little history in the notification feed (the runner adds overdue ones on its first pass)
   const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000);

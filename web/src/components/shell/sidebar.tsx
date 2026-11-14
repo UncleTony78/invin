@@ -256,7 +256,7 @@ function Pins({ pins, showTip, rail }: { pins: PinDTO[]; showTip: boolean; rail:
   return (
     <div ref={listRef} className="pins" data-overflow={overflow || undefined}>
       {items.map((p, k) => {
-        const [bg, fg] = p.kind === "invoice" ? tintFor(p.label) : ["#FCEFDD", "#94470A"];
+        const [bg, fg] = p.kind === "invoice" || p.ref.startsWith("sv:") ? tintFor(p.label) : ["#FCEFDD", "#94470A"];
         const open = () => {
           if (justDragged.current) return;
           if (p.kind === "invoice") sheet.open(p.ref);
@@ -268,7 +268,7 @@ function Pins({ pins, showTip, rail }: { pins: PinDTO[]; showTip: boolean; rail:
               <div className="ni" role="button" tabIndex={0} onClick={open} onKeyDown={(e) => e.key === "Enter" && open()}>
                 <span className="ic">
                   <span className="tile" style={{ background: bg, color: fg }}>
-                    {p.kind === "invoice" ? <span className="iv-mono">{p.label.slice(-3)}</span> : <Icon name="alert" size={12} />}
+                    {p.kind === "invoice" ? <span className="iv-mono">{p.label.slice(-3)}</span> : <Icon name={p.ref === "overdue" ? "alert" : "tag"} size={12} />}
                   </span>
                 </span>
                 <span className={`lb fade ${p.kind === "invoice" ? "iv-mono text-[13px]" : ""}`}>{p.label}</span>

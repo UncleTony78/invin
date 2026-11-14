@@ -24,6 +24,8 @@ export type PaperInvoice = {
   note?: string;
   /** Paid in full or cancelled: no "amount due", no payment box */
   settled?: "paid" | "cancelled";
+  /** Custom fields the business chose to print, e.g. ["PO number", "4471"] */
+  fields?: [string, string][];
 };
 
 /**
@@ -120,6 +122,13 @@ export function InvoicePaper({
     </>
   );
   const note = invoice.note || "Thank you for your business.";
+  const extra = invoice.fields?.length ? (
+    <dl className="xf">
+      {invoice.fields.map(([k, v]) => (
+        <div key={k}><dt>{k}</dt><dd>{v}</dd></div>
+      ))}
+    </dl>
+  ) : null;
   const mark = <span className="mk">{business.mark}</span>;
 
   let body: ReactNode = null;
@@ -131,7 +140,7 @@ export function InvoicePaper({
           <div className="ttl">Invoice<br /><span className="iv-mono">{invoice.number}</span></div>
         </div>
         <div className="meta">
-          <div><small className="l">Bill to</small>{billTo}</div>
+          <div><small className="l">Bill to</small>{billTo}{extra}</div>
           <div><small className="l">Issued</small>{invoice.issued}<br /><br /><small className="l">Due</small>{invoice.due}</div>
           <div><small className="l">{dueWord ?? "Amount due"}</small><div className="due iv-num">{m(settled ? total : due)}</div></div>
         </div>
@@ -151,7 +160,7 @@ export function InvoicePaper({
           <div><div className="word">INVOICE</div><div>{invoice.number}</div></div>
         </div>
         <div className="meta">
-          <div><small className="l">Bill to</small>{billTo}</div>
+          <div><small className="l">Bill to</small>{billTo}{extra}</div>
           <div><small className="l">Invoice date</small>{invoice.issued}</div>
           <div><small className="l">Due date</small>{invoice.due}</div>
         </div>
@@ -174,7 +183,7 @@ export function InvoicePaper({
           <div className="big iv-num"><small>{dueWord ?? dueBy}</small>{m(settled ? total : due)}</div>
         </div>
         <div className="rows">
-          <div className="rw"><small className="l">Billed to</small><div>{billTo}</div></div>
+          <div className="rw"><small className="l">Billed to</small><div>{billTo}{extra}</div></div>
           <div className="rw"><small className="l">Items</small><div>{items}{totals}</div></div>
           {!settled && <div className="rw"><small className="l">How to pay</small><div className="paycard">{bank}</div></div>}
           <div className="rw"><small className="l">From</small><div>{business.name}<br />{from}<br /><br /><span className="muted">{note}</span></div></div>
@@ -191,7 +200,7 @@ export function InvoicePaper({
         <div className="huge iv-num">{m(settled ? total : due)}</div>
         <p>{dueWord ? dueWord.toLowerCase() : onReceipt ? "due on receipt" : `due by ${invoice.due}`} · issued {invoice.issued}</p>
         <div className="meta">
-          <div><small className="l">Bill to</small>{billTo}</div>
+          <div><small className="l">Bill to</small>{billTo}{extra}</div>
           <div><small className="l">From</small>{business.name}<br />{from}</div>
           <div><small className="l">Note</small>{note}</div>
         </div>
