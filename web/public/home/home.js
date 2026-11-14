@@ -36,9 +36,11 @@ if (win) {
   const CYCLE = 4000;
   let timers = [];
   let paused = false;
+  const phoneCta = document.querySelector('[data-phone-cta]');
   const show = (k) => {
     const st = STEPS[k];
     win.dataset.step = String(k);
+    if (phoneCta) { phoneCta.textContent = k === 3 ? 'Paid ✓' : "I've paid"; phoneCta.toggleAttribute('data-paid', k === 3); }
     pill.dataset.s = st.s;
     pillText.textContent = st.t;
     foot.textContent = st.f;
@@ -63,7 +65,7 @@ if (win) {
     });
     // The pointer entering restarts the story from the top (not in its first 800 ms)
     let last = 0;
-    win.parentElement.addEventListener('pointerenter', () => {
+    win.closest('.hm-stage').addEventListener('pointerenter', () => {
       if (paused || performance.now() - last < 800) return;
       last = performance.now();
       run();

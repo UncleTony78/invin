@@ -42,7 +42,6 @@
 <link rel="modulepreload" href="/home/assets/moments/moments.js">
 <link rel="modulepreload" href="/home/assets/moments/lib.js">
 <link rel="modulepreload" href="/home/assets/moments/counter-rolls/moment.js">
-<link rel="modulepreload" href="/home/assets/moments/line-carries-colour/moment.js">
 <link rel="stylesheet" href="/home/home.css">
 </head>
 <body>
@@ -50,7 +49,7 @@
      deal: hero split, nav nav-mega, close close-type, footer footer-statement, rhythm surface-pairs, buttons solid,
      mark: InVin's own logo, grounds: bg-topglow on the nav and hero; lit ground sand behind UI
      effect: the big scene parts-lock-into-the-whole (#product, rest 1H, live 2H); no shader ground beside it
-     moments: line-carries-colour (#designs, from base), counter-rolls (the figures row, last row of #team)
+     moments: counter-rolls (the figures row, last row of #team)
      hero loop: the invoice window's story (draft, sent, opened, paid), one cycle 4 s, pause disc -->
 
 <header class="nav">
@@ -102,10 +101,10 @@
         <p class="hero__kicker"><span class="dot" aria-hidden="true"></span>9 invoice designs, 4 currencies</p>
         <h1 id="hero-h">Invoicing for freelancers and small studios</h1>
         <p class="hero__lead">Send a branded invoice in a minute. InVin tells you when it's opened, reminds late payers and sends the receipt once you're paid.</p>
-        <div class="btn-row"><a class="btn btn--primary" href="/sign-in">Create your account<svg class="m-arrow" viewBox="0 0 12 12" aria-hidden="true"><path class="m-arrow__stem" d="M1 6h8"/><path class="m-arrow__head" d="M4.5 2.5 8 6l-3.5 3.5"/></svg></a><a class="btn btn--secondary" href="#product">See the invoices screen</a></div>
+        <div class="btn-row"><a class="btn btn--primary" href="/sign-in">Create your account<svg class="m-arrow" viewBox="0 0 12 12" aria-hidden="true"><path class="m-arrow__stem" d="M1 6h8"/><path class="m-arrow__head" d="M4.5 2.5 8 6l-3.5 3.5"/></svg></a><a class="btn btn--secondary" href="#product">See how it works</a></div>
       </div>
-      <div class="hero__media span-6 start-7 frame hm-hero-frame" data-visual>
-        <div class="hm-win" data-step="0" role="img" aria-label="An InVin invoice for Northstar Advisory, from draft to paid">
+      <div class="hero__media span-6 start-7 hm-stage" data-visual>
+        <div class="hm-win" data-step="0" role="img" aria-label="An InVin invoice for Northstar Advisory, from draft to paid, and the page the customer pays from">
           <div class="hm-win__bar">
             <span class="hm-win__dots" aria-hidden="true"><i></i><i></i><i></i></span>
             <span class="hm-win__no">INV-0145</span>
@@ -121,9 +120,17 @@
           </div>
           <button class="hm-pause" type="button" aria-label="Pause the example" aria-pressed="false"><svg viewBox="0 0 16 16" aria-hidden="true"><path class="i-pause" d="M5 3.5h2v9H5zM9 3.5h2v9H9z"/><path class="i-play" d="M5 3.5v9l7-4.5z"/></svg></button>
         </div>
-        <div class="ly-float hm-float">
-          <div class="ly-float__row"><span class="ly-live">Paid</span><span>Nov 21</span></div>
-          <div class="ly-float__title">£1,800.00 from Northstar. Receipt sent.</div>
+        <div class="hm-phone hm-phone--hero" aria-hidden="true">
+          <div class="hm-phone__screen">
+            <div class="hm-pp__brand"><span class="hm-pp__mk">AO</span><b>Ada Obi Studio</b></div>
+            <p class="hm-pp__label">INV-0145 · due Nov 27</p>
+            <p class="hm-pp__amt">£1,800.00</p>
+            <div class="hm-pp__bank">
+              <div><span>Account</span><b class="mono">41286650</b></div>
+              <div><span>Sort code</span><b class="mono">23-14-70</b></div>
+            </div>
+            <span class="hm-pp__cta" data-phone-cta>I've paid</span>
+          </div>
         </div>
       </div>
     </div></div>
@@ -164,7 +171,7 @@
   <section class="section ground-surface" id="features" aria-labelledby="features-h">
     <div class="wrap">
       <div class="section-head">
-        <h2 id="features-h">Reminders, receipts and repeat invoices. <span class="muted">Set once, sent on time, stopped when paid.</span></h2>
+        <h2 id="features-h">Reminders, receipts and repeat invoices. <span class="muted">Set them up once. InVin sends each one on time.</span></h2>
       </div>
       <div class="grid">
         <article class="card card--row card--open span-4 m-nolift">
@@ -196,7 +203,7 @@
           </div></div></div>
         </article>
         <article class="card card--row card--open span-4 m-nolift">
-          <h3>Sends retainer invoices every month</h3>
+          <h3>Sends repeat invoices on schedule</h3>
           <p>Weekly, monthly or yearly, sent for you or saved as a draft to check.</p>
           <div class="panel"><div class="stage"><div class="at-corner fit" style="--fit-max:340px">
             <div class="hm-frag hm-rec">
@@ -214,7 +221,7 @@
     </div>
   </section>
 
-  <section class="section ground-inverse" id="designs" data-moment="line-carries-colour" data-moment-opts='{"from": "surface"}' aria-labelledby="designs-h">
+  <section class="section ground-inverse" id="designs" aria-labelledby="designs-h">
     <div class="wrap">
       <div class="grid grid--top">
         <div class="span-6">
@@ -335,7 +342,7 @@
   </section>
 </main>
 
-<footer class="footer closing footer--statement" id="contact" aria-labelledby="close-h">
+<footer class="footer closing footer--dark" id="contact" aria-labelledby="close-h">
   <div class="wrap">
     <div class="closing__cta close--type">
       <div class="section-head">
@@ -359,6 +366,15 @@
   </div>
 </footer>
 
+<script>
+/* The scene measures its side margin from --pad; on wide screens that must be the page's own content line */
+(function () {
+  var sc = document.querySelector('[data-big-scene]');
+  if (!sc) return;
+  var set = function () { sc.style.setProperty('--pad', Math.max(innerWidth < 640 ? 24 : 48, (document.documentElement.clientWidth - 1280) / 2) + 'px'); };
+  set(); addEventListener('resize', set);
+})();
+</script>
 <script type="module" src="/home/assets/system.js"></script>
 <script type="module" src="/home/assets/motion/motion.js"></script>
 <script type="module" src="/home/assets/layout/layout.js"></script>

@@ -58,9 +58,11 @@ export default function mount(root, opts = {}) {
       // the end: the screen steps left into a column at least 600px wide; the spec takes the right
       // (the spec keeps 380px at the right; the scene runs from 1200px, so the screen keeps 0.8 of its size or more and its text 10.5px)
       const pad = parseFloat(getComputedStyle(root).getPropertyValue('--pad')) || 40;
-      const s = Math.min(1, (ctx.vw - 380 - 3.5 * pad) / Math.max(1, ub.width));
+      // InVin: pad is the page's outer margin (it grows on wide screens), so the gap beside the screen is fixed
+      const gap = 72, wrapW = ctx.vw - 2 * pad;
+      const s = Math.min(1, (wrapW - 380 - gap) / Math.max(1, ub.width));
       const col = { s, dx: -(ub.left + ub.width / 2 - (pad + ub.width * s / 2)), dy: 0 };
-      root.style.setProperty('--pl-spec-x', (pad * 2.5 + ub.width * s).toFixed(0) + 'px');
+      root.style.setProperty('--pl-spec-x', (pad + gap + ub.width * s).toFixed(0) + 'px');
       geo = { off, flip, col };
     },
     update(p) {
