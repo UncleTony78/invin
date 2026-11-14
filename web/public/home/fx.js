@@ -145,3 +145,10 @@ if (nav) {
 /* ---------- the trades band pauses under the pointer and for keyboard focus ---------- */
 const band = document.querySelector(".hm-band");
 if (band && reduce) band.classList.add("is-still");
+const bandBtn = band?.querySelector(".hm-band__pause");
+bandBtn?.addEventListener("click", () => {
+  const on = !band.classList.contains("is-paused");
+  band.classList.toggle("is-paused", on);
+  bandBtn.setAttribute("aria-pressed", String(on));
+  bandBtn.setAttribute("aria-label", on ? "Play the list of trades" : "Pause the list of trades");
+});
