@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import { IBM_Plex_Mono, IBM_Plex_Sans, Newsreader } from "next/font/google";
 import "./globals.css";
 
 const plexSans = IBM_Plex_Sans({
@@ -14,6 +14,14 @@ const plexMono = IBM_Plex_Mono({
   weight: ["400", "500"],
 });
 
+/* Only the Editorial invoice design uses it */
+const serif = Newsreader({
+  variable: "--font-serif",
+  subsets: ["latin"],
+  style: ["normal", "italic"],
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "InVin",
   description: "Bill, track and get paid, all in one calm place.",
@@ -25,7 +33,7 @@ const themeScript = `try{var t=localStorage.getItem("invin.theme");if(t)document
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" data-theme="light" className={`${plexSans.variable} ${plexMono.variable} h-full`} suppressHydrationWarning>
+    <html lang="en" data-theme="light" className={`${plexSans.variable} ${plexMono.variable} ${serif.variable} h-full`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
