@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icon";
 import { Avatar } from "@/components/ui/identity";
 import { useToast } from "@/components/ui/toast";
 import { Money } from "@/components/invoice/money";
@@ -41,6 +42,7 @@ export function CustomerView({ customer: c, invoices, credit = 0 }: { customer: 
           </div>
         </div>
         <div className="acts">
+          <Link className="iv-btn iv-btn--secondary" href={`/customers/${c.id}/statement`}><Icon name="file" />Statement</Link>
           <CustomerDialog
             id={c.id}
             initial={{ name: c.name, email: c.email, address: c.address, currency: c.currency, termsDays: c.termsDays }}

@@ -61,3 +61,53 @@ export async function submitClaim(token: string, input: { amount: number; paidOn
   revalidatePath(`/i/${token}`);
   return { ok: true as const, business: ws.name };
 }
+
+/* ---------------- Estimates: the customer's side ---------------- */
+async function estimateByToken(token: string) {
+  if (!/^[0-9a-f]{32}$/.test(token)) return null;
+  const [e] = await db.select().from(s.estimates).where(eq(s.estimates.publicToken, token));
+  return e && e.status !== "draft" ? e : null;
+}
+
+const customerActor = (name: string) => ({ actorType: "customer" as const, actorId: null, actorLabel: name });
+
+export async function trackEstimateView(token: string) {
+  const e = await estimateByToken(token);
+  if (!e || e.status !== "sent") return;
+  await db.update(s.estimates).set({ status: "viewed" }).where(and(eq(s.estimates.id, e.id), eq(s.estimates.status, "sent")));
+  await db.insert(s.events).values({ workspaceId: e.workspaceId, estimateId: e.id, ...customerActor(e.customerSnapshot?.name ?? "Customer"), title: "Customer opened the estimate" });
+  await notify(e.workspaceId, { kind: "viewed", title: `${e.customerSnapshot?.name ?? "Your customer"} opened estimate ${e.number}`, href: `/estimates/${e.number}`, dedupe: `est-viewed:${e.id}` });
+  revalidatePath("/", "layout");
+}
+
+/** The customer accepts or declines. Accepting needs their name, like signing; it can't be changed afterwards here. */
+export async function decideEstimate(token: string, input: { accept: boolean; name?: string; reason?: string }) {
+  const e = await estimateByToken(token);
+  if (!e) return { ok: false as const, error: "We couldn't find this estimate." };
+  if (!["sent", "viewed"].includes(e.status)) return { ok: false as const, error: e.status === "accepted" || e.status === "converted" ? "This estimate was already accepted." : "This estimate can't be changed any more." };
+  if (e.validUntil && e.validUntil < today()) return { ok: false as const, error: "This estimate has expired. Ask for a new one." };
+  const name = (input.name ?? "").trim().slice(0, 80);
+  if (input.accept && name.length < 2) return { ok: false as const, error: "Type your full name to accept." };
+  const who = e.customerSnapshot?.name ?? "Customer";
+  await db
+    .update(s.estimates)
+    .set(input.accept ? { status: "accepted", acceptedBy: name, acceptedAt: new Date() } : { status: "declined", declineReason: (input.reason ?? "").trim().slice(0, 300) || null })
+    .where(eq(s.estimates.id, e.id));
+  await db.insert(s.events).values({
+    workspaceId: e.workspaceId, estimateId: e.id, ...customerActor(who),
+    title: input.accept ? `Accepted by ${name}` : "Customer declined the estimate", note: input.accept ? null : (input.reason ?? "").trim() || null,
+  });
+  const amount = formatMoney(e.total / 100, e.currency as Currency);
+  await notify(e.workspaceId, {
+    kind: input.accept ? "paid" : "failed",
+    title: input.accept ? `${who} accepted estimate ${e.number}` : `${who} declined estimate ${e.number}`,
+    body: input.accept ? `${amount}. Turn it into an invoice when you're ready.` : (input.reason ?? "").trim() || undefined,
+    href: `/estimates/${e.number}`,
+  });
+  const [ws] = await db.select().from(s.workspaces).where(eq(s.workspaces.id, e.workspaceId));
+  const { estimateDecisionNotice } = await import("./email-templates");
+  const mail = estimateDecisionNotice({ customer: who, number: e.number, amount, accepted: input.accept, by: name, reason: input.reason, url: `${appUrl()}/estimates/${e.number}` });
+  await sendEmail({ workspaceId: ws.id, to: ws.email, ...mail });
+  revalidatePath("/", "layout");
+  return { ok: true as const, business: ws.name };
+}

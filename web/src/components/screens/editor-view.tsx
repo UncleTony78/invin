@@ -17,6 +17,7 @@ import { amountProblem, computeTotals, formatDate, isoDate, toMinor } from "@/li
 import { BRAND_COLOURS } from "@/lib/sample";
 import { createInvoice, updateDraft } from "@/server/actions";
 import { createRecurringInvoice, updateSeriesInvoice, type Schedule } from "@/server/series-actions";
+import { saveEstimate } from "@/server/estimate-actions";
 import { DEFAULT_SCHEDULE, ScheduleFields } from "@/components/screens/schedule-fields";
 import { CustomerDialog } from "@/components/screens/customer-form";
 
@@ -40,8 +41,10 @@ export type DraftInput = {
 };
 
 export function EditorView({
-  nextNumber, business, defaults, sender, customers: initialCustomers, accounts, catalog, draft, preselect, series, repeat: startRepeating,
+  nextNumber, business, defaults, sender, customers: initialCustomers, accounts, catalog, draft, preselect, series, repeat: startRepeating, estimate,
 }: {
+  /** Estimate mode: "valid for" instead of payment terms, no bank details or repeat; saves an estimate. `id` is set when editing a draft estimate. */
+  estimate?: { id: string | null; validDays?: number };
   nextNumber: string;
   /** Editing what a recurring series puts on its future invoices (no sending from here) */
   series?: { id: string; nextRun: string | null };
@@ -82,12 +85,23 @@ export function EditorView({
   const [saving, setSaving] = useState<"idle" | "draft">("idle");
   const customFields = defaults.customFields ?? [];
   const [fieldVals, setFieldVals] = useState<Record<string, string>>(draft?.fields ?? {});
-  const canRepeat = !draft && !series;
+  const canRepeat = !draft && !series && !estimate;
+  const [validDays, setValidDays] = useState<"7" | "14" | "30" | "60">(String(estimate?.validDays ?? 30) as "7" | "14" | "30" | "60");
+  const validUntil = (() => {
+    const [y, m, d] = issue.split("-").map(Number);
+    return isoDate(new Date(y, m - 1, d), Number(validDays));
+  })();
   const [repeat, setRepeat] = useState(!!startRepeating && canRepeat);
   const [schedule, setSchedule] = useState<Schedule>(DEFAULT_SCHEDULE);
   const keySeq = useRef((draft?.lines.length ?? 0) + 2);
   const save = (inp: Parameters<typeof createInvoice>[0], mode: "draft" | "send") =>
-    draft ? updateDraft(draft.id, inp, mode) : repeat ? createRecurringInvoice(inp, mode, schedule) : createInvoice(inp, mode);
+    estimate
+      ? saveEstimate(estimate.id, { ...inp, validDays: Number(validDays), email: inp.email }, mode)
+      : draft
+        ? updateDraft(draft.id, inp, mode)
+        : repeat
+          ? createRecurringInvoice(inp, mode, schedule)
+          : createInvoice(inp, mode);
 
   const cur = customer.currency as Currency;
   const parsed = lines.map((l) => ({ description: l.description, quantity: parseFloat(l.quantity) || 0, unitPrice: toMinor(parseFloat(l.price) || 0) }));
@@ -171,13 +185,14 @@ export function EditorView({
     setSaving("idle");
     if (!res.ok) return setError(res.error);
     toast({ title: draft ? `${res.number} saved` : repeat ? `${res.number} saved as a draft. The series carries on from it.` : `${res.number} saved as a draft` });
-    router.push(`/invoices?view=drafts&fresh=${res.number}`);
+    router.push(estimate ? `/estimates/${res.number}` : `/invoices?view=drafts&fresh=${res.number}`);
   }
 
   const preview = {
     number: nextNumber,
     issued: formatDate(issue, { year: true }),
-    due: Number(terms) ? formatDate(dueIso, { year: true }) : "On receipt",
+    due: estimate ? formatDate(validUntil, { year: true }) : Number(terms) ? formatDate(dueIso, { year: true }) : "On receipt",
+    doc: estimate ? ("estimate" as const) : ("invoice" as const),
     currency: cur,
     customer: { name: customer.name, email: customer.email, address: customer.address, currency: cur },
     items: parsed.map((l) => ({ description: l.description, quantity: l.quantity, price: l.unitPrice / 100 })),
@@ -191,9 +206,11 @@ export function EditorView({
       <div className="ed-form">
         <div className="ph" style={{ padding: "16px 0 8px" }}>
           <div>
-            <h1 style={{ fontSize: "var(--fs-22)" }}>{series ? "Edit recurring invoice" : draft ? <>Edit draft <span className="iv-mono">{nextNumber}</span></> : repeat ? "New recurring invoice" : "New invoice"}</h1>
+            <h1 style={{ fontSize: "var(--fs-22)" }}>{estimate ? (estimate.id ? <>Edit estimate <span className="iv-mono">{nextNumber}</span></> : "New estimate") : series ? "Edit recurring invoice" : draft ? <>Edit draft <span className="iv-mono">{nextNumber}</span></> : repeat ? "New recurring invoice" : "New invoice"}</h1>
             <p className="sub">
-              {series
+              {estimate
+                ? <>A price for the work, for {customer?.name ?? "your customer"} to accept online. It becomes an invoice in one click.</>
+                : series
                 ? `Changes apply from the next invoice${series.nextRun ? `, on ${formatDate(series.nextRun, { year: true })}` : ""}. Invoices already made stay as they are.`
                 : draft
                   ? "Nothing has been sent yet. Change anything, then save or send it."
@@ -218,14 +235,24 @@ export function EditorView({
         </section>
 
         <section className="ed-sec">
-          <header><h2>Dates</h2><p>When it&apos;s sent and how long they have to pay.</p></header>
+          <header><h2>Dates</h2><p>{estimate ? "When it's sent and how long the price holds." : <>When it&apos;s sent and how long they have to pay.</>}</p></header>
           <div className="fgrid">
-            {!series && <TextField label={repeat ? "First invoice date" : "Invoice date"} type="date" value={issue} onChange={(e) => setIssue(e.target.value)} />}
+            {!series && <TextField label={estimate ? "Estimate date" : repeat ? "First invoice date" : "Invoice date"} type="date" value={issue} onChange={(e) => setIssue(e.target.value)} />}
             <CategoryField value={category} onChange={setCategory} options={defaults.categories ?? []} />
             <div className="iv-field full">
+              {estimate ? (
+                <>
+                  <span className="iv-label">Valid for</span>
+                  <Segmented label="Valid for" value={validDays} onChange={setValidDays} options={[{ value: "7", label: "7 days" }, { value: "14", label: "14 days" }, { value: "30", label: "30 days" }, { value: "60", label: "60 days" }]} fill />
+                  <span className="iv-hint">They can accept it until {formatDate(validUntil, { year: true })}.</span>
+                </>
+              ) : (
+              <>
               <span className="iv-label">Time to pay</span>
               <Segmented label="Time to pay" value={terms} onChange={setTerms} options={[...TERMS]} fill />
               <span className="iv-hint">{series ? `Each invoice is due ${Number(terms) ? `${terms} days after it's made` : "on receipt"}.` : Number(terms) ? `Due ${formatDate(dueIso, { year: true })}. ${defaults.remindersNote ?? ""}` : "Due as soon as they get it."}</span>
+              </>
+              )}
             </div>
           </div>
         </section>
@@ -304,6 +331,12 @@ export function EditorView({
           </div>
         </section>
 
+        {estimate ? (
+          <section className="ed-sec">
+            <header><h2>Note</h2><p>Shown on the estimate, e.g. what&apos;s included or how long the work takes.</p></header>
+            <TextArea label="Note to customer" value={note} onChange={(e) => setNote(e.target.value)} />
+          </section>
+        ) : (
         <section className="ed-sec">
           <header><h2>Getting paid</h2><p>These account details print on the invoice and the online invoice page.</p></header>
           <div className="grid gap-4">
@@ -319,12 +352,13 @@ export function EditorView({
             <TextArea label="Note to customer" value={note} onChange={(e) => setNote(e.target.value)} />
           </div>
         </section>
+        )}
 
         {error && <div className="form-error"><Icon name="alert" />{error}</div>}
 
         <div className="ed-bar">
           <div className="total">
-            <small>{series ? "Each invoice" : repeat ? `Total · repeats ${schedule.frequency === "quarterly" ? "every 3 months" : schedule.frequency}` : `Total · ${Number(terms) ? `due ${formatDate(dueIso)}` : "due on receipt"}`}</small>
+            <small>{estimate ? `Total · valid until ${formatDate(validUntil)}` : series ? "Each invoice" : repeat ? `Total · repeats ${schedule.frequency === "quarterly" ? "every 3 months" : schedule.frequency}` : `Total · ${Number(terms) ? `due ${formatDate(dueIso)}` : "due on receipt"}`}</small>
             <b><Money value={totals.total / 100} currency={cur} /></b>
           </div>
           {series ? (
@@ -337,12 +371,13 @@ export function EditorView({
             <MorphLabel id={saving}>{saving === "draft" ? "Saving…" : "Save draft"}</MorphLabel>
           </Button>
           <SendDialog
+            doc={estimate ? "estimate" : "invoice"}
             disabled={!input.lines.length || !!tooBig}
             customer={customer}
             number={nextNumber}
             total={totals.total}
             currency={cur}
-            due={Number(terms) ? formatDate(dueIso, { year: true }) : "on receipt"}
+            due={estimate ? formatDate(validUntil, { year: true }) : Number(terms) ? formatDate(dueIso, { year: true }) : "on receipt"}
             business={business.name}
             sender={sender}
             brand={brand}
@@ -354,6 +389,11 @@ export function EditorView({
                 return false;
               }
               setTimeout(() => {
+                if (estimate) {
+                  router.push(`/estimates/${res.number}`);
+                  toast({ title: res.delivery === "failed" ? `${res.number} is marked sent, but the email failed. See Sent emails.` : `${res.number} sent to ${customer.name}` });
+                  return;
+                }
                 router.push(`/invoices?fresh=${res.number}`);
                 toast({ title: res.delivery === "sent" ? `${res.number} sent to ${customer.name}` : res.delivery === "failed" ? `${res.number} is marked sent, but the email failed. See Sent emails.` : `${res.number} is marked sent. Email is in test mode, see Sent emails.` });
                 sheet.open(res.id);
@@ -455,8 +495,10 @@ function CustomerPicker({ customers, value, onPick, onCreated }: { customers: Cu
 }
 
 function SendDialog({
+  doc = "invoice",
   disabled, customer, number, total, currency, due, business, sender, brand, onSend,
 }: {
+  doc?: "invoice" | "estimate";
   disabled: boolean; customer: Customer; number: string; total: number; currency: Currency; due: string; business: string; sender: string; brand: string;
   onSend: (email: { to: string; subject: string; message: string; attachPdf: boolean }) => Promise<boolean>;
 }) {
@@ -482,8 +524,12 @@ function SendDialog({
         onClick={() => {
           // Fill the email fresh each time, from what's on the invoice right now
           setTo(customer.email);
-          setSubject(`Invoice ${number} from ${business}`);
-          setMessage(`Hi ${customer.name.split(" ")[0]},\n\nHere's invoice ${number} for ${amount}, due ${due}. You'll find the bank details on the invoice.\n\nThanks,\n${sender}`);
+          setSubject(doc === "estimate" ? `Estimate ${number} from ${business}` : `Invoice ${number} from ${business}`);
+          setMessage(
+            doc === "estimate"
+              ? `Hi ${customer.name.split(" ")[0]},\n\nHere's estimate ${number} for ${amount}. You can accept it online; it's valid until ${due}.\n\nThanks,\n${sender}`
+              : `Hi ${customer.name.split(" ")[0]},\n\nHere's invoice ${number} for ${amount}, due ${due}. You'll find the bank details on the invoice.\n\nThanks,\n${sender}`,
+          );
           setState("idle");
           setOpen(true);
         }}
@@ -510,7 +556,7 @@ function SendDialog({
               }}
             >
               <MorphLabel id={state}>
-                {state === "idle" && <><Icon name="send" />Send invoice</>}
+                {state === "idle" && <><Icon name="send" />{doc === "estimate" ? "Send estimate" : "Send invoice"}</>}
                 {state === "sending" && "Sending…"}
                 {state === "sent" && <><Icon name="check" />Sent</>}
               </MorphLabel>
@@ -522,9 +568,13 @@ function SendDialog({
         <TextField label="Subject" value={subject} onChange={(e) => setSubject(e.target.value)} />
         <TextArea label="Message" value={message} onChange={(e) => setMessage(e.target.value)} style={{ height: 150 }} />
         <div className="rounded-lg bg-surface-2 p-3 text-[13px] text-text-2">
-          The email includes a <span className="rounded px-1.5 py-0.5 font-medium text-white" style={{ background: brand }}>View invoice</span> button. Your customer can download the PDF and see your bank details there.
+          {doc === "estimate" ? (
+            <>The email includes a <span className="rounded px-1.5 py-0.5 font-medium text-white" style={{ background: brand }}>Review estimate</span> button. Your customer can accept or decline it there.</>
+          ) : (
+            <>The email includes a <span className="rounded px-1.5 py-0.5 font-medium text-white" style={{ background: brand }}>View invoice</span> button. Your customer can download the PDF and see your bank details there.</>
+          )}
         </div>
-        <Switch checked={pdf} onCheckedChange={setPdf} label="Attach the invoice as a PDF" />
+        {doc === "invoice" && <Switch checked={pdf} onCheckedChange={setPdf} label="Attach the invoice as a PDF" />}
       </DialogContent>
     </Dialog>
   );

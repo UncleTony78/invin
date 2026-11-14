@@ -42,8 +42,10 @@ export function Sidebar({
       label: "Billing",
       items: [
         { href: "/invoices", label: "Invoices", icon: "file", count: overdue || undefined, alert: overdue > 0 },
+        { href: "/estimates", label: "Estimates", icon: "clipboard" },
         { href: "/recurring", label: "Recurring", icon: "repeat" },
         { href: "/payments", label: "Payments", icon: "cash" },
+        { href: "/reports", label: "Reports", icon: "chart" },
       ],
     },
     {

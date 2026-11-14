@@ -17,5 +17,5 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   // Everything except sign-in, the auth API, customers' invoice links, the component showcase, and static files
-  matcher: ["/((?!sign-in|api/auth|api/cron|i/|components|_next/|favicon.ico|.*\\.(?:svg|png|jpg|ico|webp|woff2?)$).*)"],
+  matcher: ["/((?!sign-in|api/auth|api/cron|i/|e/|components|_next/|favicon.ico|.*\\.(?:svg|png|jpg|ico|webp|woff2?)$).*)"],
 };

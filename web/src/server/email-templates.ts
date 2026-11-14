@@ -87,3 +87,43 @@ export function draftReadyNotice(o: { number: string; customer: string; amount: 
     html: shell({ brand: "#1A1916", business: "InVin", preheader: `${o.number} for ${o.amount} is ready`, body: paragraphs(text), button: { label: "Review draft", url: o.url } }),
   };
 }
+
+/** A statement sent to a customer; the PDF is attached. */
+export function statementEmail(o: { brand: string; business: string; period: string; balance: string; message: string }) {
+  return {
+    subject: `Your statement from ${o.business} · ${o.period}`,
+    text: `${o.message}\n\nBalance at the end of the period: ${o.balance}. The full statement is attached as a PDF.`,
+    html: shell({
+      brand: o.brand,
+      business: o.business,
+      preheader: `Statement for ${o.period}, balance ${o.balance}`,
+      body: `<p style="margin:0 0 4px;color:#6E6C66;font-size:13px">Statement · ${esc(o.period)}</p><p style="margin:0 0 18px;font-size:28px;font-weight:600;letter-spacing:-.02em">${esc(o.balance)}</p>${paragraphs(o.message)}<p style="margin:0;color:#6E6C66;font-size:13px">The full statement is attached as a PDF.</p>`,
+    }),
+  };
+}
+
+/** An estimate sent to a customer, with a button to review and accept it. */
+export function estimateEmail(o: { brand: string; business: string; number: string; amount: string; validUntil: string; message: string; url: string }) {
+  return {
+    text: `${o.message}\n\nReview and accept estimate ${o.number}: ${o.url}`,
+    html: shell({
+      brand: o.brand,
+      business: o.business,
+      preheader: `Estimate ${o.number} for ${o.amount}, valid until ${o.validUntil}`,
+      body: `<p style="margin:0 0 4px;color:#6E6C66;font-size:13px">Estimate ${esc(o.number)}</p><p style="margin:0 0 18px;font-size:28px;font-weight:600;letter-spacing:-.02em">${esc(o.amount)}</p><p style="margin:0 0 20px;color:#6E6C66">Valid until ${esc(o.validUntil)}</p>${paragraphs(o.message)}`,
+      button: { label: "Review estimate", url: o.url },
+    }),
+  };
+}
+
+/** To the business: the customer accepted or declined an estimate. */
+export function estimateDecisionNotice(o: { customer: string; number: string; amount: string; accepted: boolean; by?: string; reason?: string; url: string }) {
+  const text = o.accepted
+    ? `${o.customer} accepted estimate ${o.number} for ${o.amount}${o.by ? `, signed by ${o.by}` : ""}.\n\nTurn it into an invoice when you're ready.`
+    : `${o.customer} declined estimate ${o.number} for ${o.amount}.${o.reason ? `\n\nTheir reason: ${o.reason}` : ""}`;
+  return {
+    subject: `${o.customer} ${o.accepted ? "accepted" : "declined"} estimate ${o.number}`,
+    text: `${text}\n\nOpen it: ${o.url}`,
+    html: shell({ brand: "#1A1916", business: "InVin", preheader: `${o.customer} ${o.accepted ? "accepted" : "declined"} ${o.number}`, body: paragraphs(text), button: { label: "Open estimate", url: o.url } }),
+  };
+}

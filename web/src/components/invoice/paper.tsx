@@ -26,6 +26,8 @@ export type PaperInvoice = {
   settled?: "paid" | "cancelled";
   /** Custom fields the business chose to print, e.g. ["PO number", "4471"] */
   fields?: [string, string][];
+  /** An estimate: "Estimate" wording, "Valid until" instead of due, and no payment box */
+  doc?: "invoice" | "estimate";
 };
 
 /**
@@ -55,8 +57,11 @@ export function InvoicePaper({
   const total = sub + vat;
   const due = total - (invoice.paid ?? 0);
   const c = invoice.customer;
-  const settled = invoice.settled;
-  const dueWord = settled === "paid" ? "Paid in full" : settled === "cancelled" ? "Cancelled" : null;
+  const estimate = invoice.doc === "estimate";
+  // Estimates never show how to pay: nothing is owed until it becomes an invoice
+  const settled = invoice.settled ?? (estimate ? ("paid" as const) : undefined);
+  const word = estimate ? "Estimate" : "Invoice";
+  const dueWord = estimate ? `Valid until ${invoice.due}` : settled === "paid" ? "Paid in full" : settled === "cancelled" ? "Cancelled" : null;
   // "On receipt" reads as a phrase, not a date: "Due on receipt", never "due by On receipt"
   const onReceipt = /receipt/i.test(invoice.due);
   const dueBy = onReceipt ? "Due on receipt" : `Amount due by ${invoice.due}`;
@@ -137,12 +142,12 @@ export function InvoicePaper({
       <div className="pad">
         <div className="ptop">
           <div className="biz">{mark}{business.name}</div>
-          <div className="ttl">Invoice<br /><span className="iv-mono">{invoice.number}</span></div>
+          <div className="ttl">{word}<br /><span className="iv-mono">{invoice.number}</span></div>
         </div>
         <div className="meta">
           <div><small className="l">Bill to</small>{billTo}{extra}</div>
-          <div><small className="l">Issued</small>{invoice.issued}<br /><br /><small className="l">Due</small>{invoice.due}</div>
-          <div><small className="l">{dueWord ?? "Amount due"}</small><div className="due iv-num">{m(settled ? total : due)}</div></div>
+          <div><small className="l">Issued</small>{invoice.issued}<br /><br /><small className="l">{estimate ? "Valid until" : "Due"}</small>{invoice.due}</div>
+          <div><small className="l">{estimate ? "Total" : dueWord ?? "Amount due"}</small><div className="due iv-num">{m(settled ? total : due)}</div></div>
         </div>
         {items}
         {totals}
@@ -157,12 +162,12 @@ export function InvoicePaper({
       <div className="pad">
         <div className="head">
           <div className="biz">{mark}<div><b>{business.name}</b><span>{from}</span></div></div>
-          <div><div className="word">INVOICE</div><div>{invoice.number}</div></div>
+          <div><div className="word">{word.toUpperCase()}</div><div>{invoice.number}</div></div>
         </div>
         <div className="meta">
           <div><small className="l">Bill to</small>{billTo}{extra}</div>
           <div><small className="l">Invoice date</small>{invoice.issued}</div>
-          <div><small className="l">Due date</small>{invoice.due}</div>
+          <div><small className="l">{estimate ? "Valid until" : "Due date"}</small>{invoice.due}</div>
         </div>
         {items}
         {totals}
@@ -178,7 +183,7 @@ export function InvoicePaper({
         <div className="band">
           <div>
             <div className="biz">{mark}{business.name}</div>
-            <div className="ttl">Invoice {invoice.number} · issued {invoice.issued}</div>
+            <div className="ttl">{word} {invoice.number} · issued {invoice.issued}</div>
           </div>
           <div className="big iv-num"><small>{dueWord ?? dueBy}</small>{m(settled ? total : due)}</div>
         </div>
@@ -195,10 +200,10 @@ export function InvoicePaper({
       <div className="pad">
         <div className="ptop">
           <div className="biz">{mark}{business.name}</div>
-          <div style={{ textAlign: "right", color: "#5F5D58" }}>Invoice<br /><span className="iv-mono">{invoice.number}</span></div>
+          <div style={{ textAlign: "right", color: "#5F5D58" }}>{word}<br /><span className="iv-mono">{invoice.number}</span></div>
         </div>
         <div className="huge iv-num">{m(settled ? total : due)}</div>
-        <p>{dueWord ? dueWord.toLowerCase() : onReceipt ? "due on receipt" : `due by ${invoice.due}`} · issued {invoice.issued}</p>
+        <p>{estimate ? `Valid until ${invoice.due}` : dueWord ? dueWord.toLowerCase() : onReceipt ? "due on receipt" : `due by ${invoice.due}`} · issued {invoice.issued}</p>
         <div className="meta">
           <div><small className="l">Bill to</small>{billTo}{extra}</div>
           <div><small className="l">From</small>{business.name}<br />{from}</div>

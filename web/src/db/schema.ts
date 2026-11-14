@@ -75,6 +75,8 @@ export const workspaces = pgTable("workspaces", {
   template: text("template").notNull().default("stacked"),
   numberPrefix: text("number_prefix").notNull().default("INV-"),
   nextNumber: integer("next_number").notNull().default(1),
+  estimatePrefix: text("estimate_prefix").notNull().default("EST-"),
+  nextEstimate: integer("next_estimate").notNull().default(1),
   /** What they invoice for, from the welcome chat (e.g. "Design"). Seeds the default invoice category. */
   work: text("work").notNull().default(""),
   /** The categories this workspace bills under, in the order they were added */
@@ -259,6 +261,8 @@ export const events = pgTable(
     id: id(),
     workspaceId: text("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
     invoiceId: text("invoice_id").references(() => invoices.id, { onDelete: "cascade" }),
+    /** Set for events on an estimate (no FK: estimates are defined after this table) */
+    estimateId: text("estimate_id"),
     title: text("title").notNull(),
     actorType: actorTypeEnum("actor_type").notNull(),
     actorId: text("actor_id"),
@@ -386,3 +390,45 @@ export const savedViews = pgTable("saved_views", {
   createdBy: text("created_by"),
   createdAt: createdAt(),
 });
+
+/**
+ * An estimate (quote). The customer accepts or declines it on its own page; accepted ones
+ * become invoices in one click, either all at once or as a deposit invoice then the rest.
+ * Status: draft | sent | viewed | accepted | declined | converted ("expired" is worked out from validUntil).
+ */
+export const estimates = pgTable(
+  "estimates",
+  {
+    id: id(),
+    workspaceId: text("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+    number: text("number").notNull(),
+    customerId: text("customer_id").notNull().references(() => customers.id),
+    status: text("status").notNull().default("draft"),
+    currency: text("currency").notNull(),
+    category: text("category").notNull().default("General"),
+    issueDate: date("issue_date", { mode: "string" }),
+    validDays: integer("valid_days").notNull().default(30),
+    validUntil: date("valid_until", { mode: "string" }),
+    template: text("template").notNull().default("stacked"),
+    brandColor: text("brand_color").notNull().default("#0E5A52"),
+    note: text("note").notNull().default(""),
+    vatBps: integer("vat_bps").notNull().default(0),
+    lines: jsonb("lines").$type<{ description: string; quantity: number; unitPrice: number }[]>().notNull().default([]),
+    subtotal: minor("subtotal"),
+    tax: minor("tax"),
+    total: minor("total"),
+    publicToken: text("public_token").notNull().$defaultFn(() => crypto.randomUUID().replace(/-/g, "")),
+    customerSnapshot: jsonb("customer_snapshot").$type<{ name: string; email: string; address: string }>(),
+    acceptedBy: text("accepted_by"),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+    declineReason: text("decline_reason"),
+    /** Deposit as basis points of the total (5000 = 50%), when billed as deposit + rest */
+    depositBps: integer("deposit_bps"),
+    depositInvoiceId: text("deposit_invoice_id"),
+    invoiceId: text("invoice_id"),
+    createdBy: text("created_by"),
+    createdAt: createdAt(),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+  },
+  (t) => [uniqueIndex("estimates_ws_number").on(t.workspaceId, t.number), uniqueIndex("estimates_token").on(t.publicToken)],
+);

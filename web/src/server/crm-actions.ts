@@ -194,3 +194,27 @@ export async function importCustomers(rows: CustomerInput[]): Promise<Result<{ a
   refresh();
   return { ok: true, added, updated, skipped };
 }
+
+/* ---------------- Statements ---------------- */
+/** Email a customer their statement for a period, with the PDF attached. */
+export async function emailStatement(customerId: string, from: string, to: string, input: { to: string; message: string }): Promise<Result<{ delivery: string }>> {
+  const session = await requireSession();
+  const { statement, statementHtml } = await import("./statements");
+  const { renderHtmlPdf, pdfReady } = await import("./pdf");
+  const { sendEmail } = await import("./email");
+  const { statementEmail } = await import("./email-templates");
+  const { formatMoney } = await import("@/lib/format");
+  const { formatDate } = await import("@/lib/invoice-math");
+  const st = await statement(session, customerId, from, to);
+  if (!st) return { ok: false, error: "Customer not found." };
+  if (!emailOk(input.to.trim())) return { ok: false, error: "Check the email address, it looks incomplete." };
+  if (!pdfReady()) return { ok: false, error: "PDF rendering isn't set up yet, so the statement can't be attached." };
+  const pdf = await renderHtmlPdf(statementHtml(st));
+  const period = `${formatDate(from, { year: true })} to ${formatDate(to, { year: true })}`;
+  const mail = statementEmail({ brand: session.workspace.brandColor, business: session.workspace.name, period, balance: formatMoney(st.closing / 100, st.currency), message: input.message.trim() || `Hi ${st.customer.name.split(" ")[0]},\n\nHere's your statement from ${session.workspace.name}.` });
+  const res = await sendEmail({
+    workspaceId: session.workspace.id, to: input.to.trim(), subject: mail.subject, text: mail.text, html: mail.html, replyTo: session.workspace.email, fromName: session.workspace.name,
+    attachments: [{ filename: `Statement ${st.from} to ${st.to}.pdf`, content: pdf }],
+  });
+  return { ok: true, delivery: res.status };
+}

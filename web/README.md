@@ -36,7 +36,9 @@ Phase 2 (built): recurring series (`/recurring`), automatic reminders and receip
 
 Organising (built): tags on invoices (panel, list chips, filter, bulk tag), saved views (filters saved as shared tabs, pinnable to the sidebar), custom invoice fields (defined in Settings, filled in the editor or panel, printed for customers only when marked).
 
-Next: email notification digests, more invoice designs, inviting teammates, Google sign-in, then Phase 3 (reports, statements, estimates).
+Phase 3 (part 1, built): reports (`/reports`: invoiced vs collected, aging, by customer, category and currency, VAT, recurring revenue; CSV and print), customer statements (`/customers/<id>/statement`, PDF and email), estimates (`/estimates`; customers accept or decline at `/e/<token>`; convert to an invoice, or a deposit invoice then the rest).
+
+Next: teams and roles (invites), custom sending domain, mobile polish, email notification digests, Google sign-in.
 
 ## Component library (Phase 0)
 

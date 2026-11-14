@@ -45,6 +45,7 @@ const CRUMBS: Record<string, [string, string?][]> = {
   "/": [["Home"]],
   "/invoices": [["Invoices"]],
   "/invoices/new": [["Invoices", "/invoices"], ["New invoice"]],
+  "/estimates/new": [["Estimates", "/estimates"], ["New estimate"]],
   "/outbox": [["Settings", "/settings"], ["Sent emails"]],
 };
 
@@ -53,6 +54,10 @@ function crumbsFor(path: string): [string, string?][] {
   const edit = path.match(/^\/invoices\/([^/]+)\/edit$/);
   if (edit) return [["Invoices", "/invoices"], [`Edit ${decodeURIComponent(edit[1])}`]];
   if (/^\/customers\/[^/]+$/.test(path)) return [["Customers", "/customers"], ["Customer"]];
+  const stm = path.match(/^\/customers\/([^/]+)\/statement$/);
+  if (stm) return [["Customers", "/customers"], ["Customer", `/customers/${stm[1]}`], ["Statement"]];
+  const est = path.match(/^\/estimates\/([^/]+)(\/edit)?$/);
+  if (est && est[1] !== "new") return est[2] ? [["Estimates", "/estimates"], [decodeURIComponent(est[1]), `/estimates/${est[1]}`], ["Edit"]] : [["Estimates", "/estimates"], [decodeURIComponent(est[1])]];
   const rec = path.match(/^\/recurring\/([^/]+)(\/edit)?$/);
   if (rec) return rec[2] ? [["Recurring", "/recurring"], ["Series", `/recurring/${rec[1]}`], ["Edit invoice"]] : [["Recurring", "/recurring"], ["Series"]];
   const top = path.split("/")[1] ?? "";
@@ -123,6 +128,9 @@ function Shell({ workspace, member, pins, overdue, invoices, unread, children }:
       { id: "payments", group: "Go to", label: "Payments", icon: "cash", run: () => router.push("/payments") },
       { id: "customers", group: "Go to", label: "Customers", icon: "users", run: () => router.push("/customers") },
       { id: "catalogue", group: "Go to", label: "Catalogue", icon: "copy", run: () => router.push("/catalogue") },
+      { id: "estimates", group: "Go to", label: "Estimates", icon: "clipboard", run: () => router.push("/estimates") },
+      { id: "new-estimate", group: "Actions", label: "New estimate", icon: "clipboard", run: () => router.push("/estimates/new") },
+      { id: "reports", group: "Go to", label: "Reports", icon: "chart", run: () => router.push("/reports") },
       { id: "settings", group: "Go to", label: "Settings", icon: "settings", run: () => router.push("/settings") },
       { id: "new", group: "Actions", label: "New invoice", icon: "plus", kbd: "C", run: () => router.push("/invoices/new") },
       { id: "theme", group: "Actions", label: "Switch between light and dark", icon: "moon", run: toggleTheme },

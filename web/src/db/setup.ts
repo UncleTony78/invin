@@ -19,7 +19,7 @@ const db = drizzle(client, { schema: s });
 
 async function main() {
   await migrate(db, { migrationsFolder: "./drizzle" });
-  await client.exec(`TRUNCATE saved_views, notification_seen, notifications, refunds, credits, reminder_log, series, onboarding, verification, account, session, "user", payment_claims, outbox, pins, events, payments, line_items, invoices, catalog_items, bank_accounts, customers, members, workspaces CASCADE`);
+  await client.exec(`TRUNCATE estimates, saved_views, notification_seen, notifications, refunds, credits, reminder_log, series, onboarding, verification, account, session, "user", payment_claims, outbox, pins, events, payments, line_items, invoices, catalog_items, bank_accounts, customers, members, workspaces CASCADE`);
 
   const today = new Date();
   const d = (n: number) => isoDate(today, n);
@@ -183,6 +183,28 @@ async function main() {
   await tag(136, ["Chase"]);
   await tag(140, ["Website"], { proj: "Sprint 3" });
   await db.insert(s.savedViews).values({ workspaceId: ws.id, name: "To chase", base: "open", tags: ["Chase"], createdBy: ada.id });
+
+  // Estimates: one accepted and ready to invoice, one waiting, one declined, one draft
+  const custBy = (n: string) => customers.find((c) => c.name === n)!;
+  const est = async (n: number, c: string, status: string, issue: number | null, lines: [string, number, number][], extra: Partial<typeof s.estimates.$inferInsert> = {}) => {
+    const cu = custBy(c);
+    const l = lines.map(([description, quantity, price]) => ({ description, quantity, unitPrice: toMinor(price) }));
+    const t = computeTotals(l, 0);
+    const [row] = await db.insert(s.estimates).values({
+      workspaceId: ws.id, number: `EST-000${n}`, customerId: cu.id, status, currency: cu.currency, category: "Design", issueDate: issue === null ? d(0) : d(issue), validDays: 30, validUntil: issue === null ? d(30) : d(issue + 30),
+      lines: l, ...t, note: "Includes two rounds of changes. Work starts within a week of acceptance.", createdBy: ada.id,
+      customerSnapshot: status === "draft" ? null : { name: cu.name, email: cu.email, address: cu.address }, sentAt: status === "draft" ? null : new Date(`${d(issue ?? 0)}T10:00:00`), ...extra,
+    }).returning();
+    await db.insert(s.events).values({ workspaceId: ws.id, estimateId: row.id, actorType: "member", actorId: ada.id, actorLabel: ada.name, title: status === "draft" ? "Estimate created" : `Estimate sent to ${cu.email}`, createdAt: new Date(`${d(issue ?? 0)}T10:00:00`) });
+    return row;
+  };
+  const e1 = await est(1, "Lumen Labs", "accepted", -6, [["Design system, foundations", 1, 4800], ["Component library, 30 components", 1, 6200]], { acceptedBy: "Priya Nair", acceptedAt: new Date(`${d(-2)}T16:20:00`) });
+  await db.insert(s.events).values({ workspaceId: ws.id, estimateId: e1.id, actorType: "customer", actorLabel: "Lumen Labs", title: "Accepted by Priya Nair", createdAt: new Date(`${d(-2)}T16:20:00`) });
+  await est(2, "Acme Corp", "viewed", -3, [["Website redesign, discovery", 1, 2500], ["Website redesign, design", 1, 7500]]);
+  const e3 = await est(3, "Bloom & Co", "declined", -12, [["Packaging range, 6 SKUs", 6, 450]], { declineReason: "We're keeping the current packaging this year." });
+  await db.insert(s.events).values({ workspaceId: ws.id, estimateId: e3.id, actorType: "customer", actorLabel: "Bloom & Co", title: "Customer declined the estimate", note: "We're keeping the current packaging this year.", createdAt: new Date(`${d(-9)}T11:05:00`) });
+  await est(4, "Studio Nine", "draft", null, [["Brand guidelines refresh", 1, 2200]]);
+  await db.update(s.workspaces).set({ nextEstimate: 5 }).where(eq(s.workspaces.id, ws.id));
 
   // A little history in the notification feed (the runner adds overdue ones on its first pass)
   const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000);
