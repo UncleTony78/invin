@@ -137,3 +137,23 @@ export function inviteEmail(o: { inviter: string; business: string; role: string
     html: shell({ brand: "#1A1916", business: "InVin", preheader: `Join ${o.business} on InVin`, body: paragraphs(text), button: { label: `Join ${o.business}`, url: o.url } }),
   };
 }
+
+/** The member's daily or weekly summary of the workspace. `stats` are already formatted. */
+export function digestEmail(o: { subject: string; business: string; period: string; stats: { label: string; value: string; note?: string }[]; events: string[]; url: string; settingsUrl: string }) {
+  const cell = (st: { label: string; value: string; note?: string }) =>
+    `<td style="padding:12px 14px;background:#F6F6F3;border-radius:10px;vertical-align:top" width="50%"><div style="font-size:12px;color:#6E6C66">${esc(st.label)}</div><div style="font-size:20px;font-weight:600;margin-top:2px">${esc(st.value)}</div>${st.note ? `<div style="font-size:12px;color:#6E6C66;margin-top:2px">${esc(st.note)}</div>` : ""}</td>`;
+  const rows: string[] = [];
+  for (let i = 0; i < o.stats.length; i += 2) rows.push(`<tr>${cell(o.stats[i])}<td width="8"></td>${o.stats[i + 1] ? cell(o.stats[i + 1]) : "<td></td>"}</tr><tr><td height="8"></td></tr>`);
+  const list = o.events.length
+    ? `<p style="margin:20px 0 8px;font-weight:600">What happened</p><ul style="margin:0;padding-left:18px">${o.events.map((e) => `<li style="margin:0 0 6px">${esc(e)}</li>`).join("")}</ul>`
+    : "";
+  const body = `<p style="margin:0 0 16px">Here's ${esc(o.period)} at ${esc(o.business)}.</p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${rows.join("")}</table>${list}
+<p style="margin:20px 0 0;font-size:12px;color:#6E6C66">Change how often you get this in <a href="${o.settingsUrl}" style="color:#6E6C66">Settings</a>.</p>`;
+  const text = [`Here's ${o.period} at ${o.business}.`, "", ...o.stats.map((st) => `${st.label}: ${st.value}${st.note ? ` (${st.note})` : ""}`), ...(o.events.length ? ["", "What happened:", ...o.events.map((e) => `- ${e}`)] : []), "", `Open InVin: ${o.url}`, `Change how often you get this: ${o.settingsUrl}`].join("\n");
+  return {
+    subject: o.subject,
+    text,
+    html: shell({ brand: "#1A1916", business: "InVin", preheader: o.stats.map((st) => `${st.label} ${st.value}`).join(" · "), body, button: { label: "Open InVin", url: o.url } }),
+  };
+}

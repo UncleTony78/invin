@@ -106,6 +106,9 @@ export const members = pgTable("members", {
   role: roleEnum("role").notNull().default("member"),
   /** The sign-in identity behind this seat. Null for seats invited but not yet joined. */
   userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
+  /** Email summary of the workspace: off | daily | weekly (Monday mornings) */
+  digest: text("digest").notNull().default("weekly"),
+  digestSentAt: timestamp("digest_sent_at", { withTimezone: true }),
   createdAt: createdAt(),
 });
 

@@ -36,6 +36,7 @@ export default async function SettingsPage() {
       team={team.map((m) => ({ id: m.id, name: m.name, email: m.email, role: m.role, you: m.id === session.member.id }))}
       email={email}
       myRole={session.member.role}
+      digest={{ kind: session.member.digest as "off" | "daily" | "weekly", email: session.member.email }}
       invites={invites.map((i) => ({ id: i.id, email: i.email, role: i.role, expiresAt: i.expiresAt.toISOString(), expired: isPast(i.expiresAt) }))}
       domain={{ domain: w.sendingDomain, status: w.domainStatus, records: w.domainRecords, fromEmail: w.fromEmail }}
     />

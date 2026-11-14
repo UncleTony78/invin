@@ -8,6 +8,7 @@ import { issueInvoice, remindCustomer, sendReceipt, today, type Actor } from "./
 import { appUrl, sendEmail } from "./email";
 import { draftReadyNotice } from "./email-templates";
 import { notify } from "./notify";
+import { runDigests } from "./digest";
 
 /*
  * "Runs itself": everything InVin does without being asked.
@@ -29,7 +30,8 @@ export async function runDueWork(now = new Date()) {
     const reminders = await runReminders(day);
     await runOverdue(day);
     const receipts = await runReceipts(now);
-    return { recurring, reminders, receipts };
+    const digests = await runDigests(now);
+    return { recurring, reminders, receipts, digests };
   } finally {
     running = false;
   }

@@ -16,6 +16,7 @@ import { deleteBankAccount, saveBankAccount, updateAutomation, updateBusiness, t
 import { describeOffset } from "@/lib/schedule";
 import { TeamSection, type PendingInvite } from "./team-section";
 import { DomainSection, type DomainState } from "./domain-section";
+import { DigestSection, type DigestState } from "./digest-section";
 
 type Account = { id: string; bank: string; currency: string; rows: [string, string][] };
 type Member = { id: string; name: string; email: string; role: string; you: boolean };
@@ -25,7 +26,7 @@ const CURRENCIES = ["USD", "GBP", "EUR", "NGN"] as const;
 /** Reminder steps you can switch on, in days from the due date */
 const STEPS = [-7, -3, -1, 0, 1, 3, 7, 14, 30];
 
-export function SettingsView({ business, automation, accounts, team, email, invites, myRole, domain }: { business: BusinessInput; automation: AutomationInput; accounts: Account[]; team: Member[]; email: EmailState; invites: PendingInvite[]; myRole: string; domain: DomainState }) {
+export function SettingsView({ business, automation, accounts, team, email, invites, myRole, domain, digest }: { digest: DigestState; business: BusinessInput; automation: AutomationInput; accounts: Account[]; team: Member[]; email: EmailState; invites: PendingInvite[]; myRole: string; domain: DomainState }) {
   const canManage = myRole === "owner" || myRole === "admin";
   const router = useRouter();
   const toast = useToast();
@@ -206,6 +207,10 @@ export function SettingsView({ business, automation, accounts, team, email, invi
       </Section>
 
       </fieldset>
+
+      <Section id="summary" title="Your email summary" hint="What came in, what's overdue and what happened, in one email. This one is just for you, so anyone on the team can set it.">
+        <DigestSection d={digest} />
+      </Section>
 
       <Section id="team" title="Team" hint="Who can use this workspace. Owners and admins manage settings and the team; members do the day-to-day billing.">
         <TeamSection team={team} invites={invites} myRole={myRole} />
