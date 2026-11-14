@@ -73,7 +73,7 @@ function Shell({ workspace, member, pins, overdue, invoices, unread, workspaces,
   const [anim, setAnim] = useState(false);
   const [drawer, setDrawer] = useState(false);
   const [palette, setPalette] = useState(false);
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [theme, setTheme] = useState<"light" | "dark">("dark");
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {

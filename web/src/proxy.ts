@@ -8,7 +8,7 @@ import { NextResponse, type NextRequest } from "next/server";
 export function proxy(request: NextRequest) {
   if (!getSessionCookie(request)) {
     // Signed-out visitors to the front door see the landing page; the address stays "/"
-    if (request.nextUrl.pathname === "/") return NextResponse.rewrite(new URL("/landing", request.url));
+    if (request.nextUrl.pathname === "/") return NextResponse.rewrite(new URL("/home/index.html", request.url));
     const url = new URL("/sign-in", request.url);
     const back = request.nextUrl.pathname + request.nextUrl.search;
     if (back !== "/") url.searchParams.set("next", back);
@@ -18,6 +18,6 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Everything except sign-in, the landing page, the auth API, customers' invoice links, the component showcase, and static files
-  matcher: ["/((?!sign-in|landing|api/auth|api/cron|i/|e/|components|_next/|favicon.ico|.*\\.(?:svg|png|jpg|ico|webp|woff2?)$).*)"],
+  // Everything except sign-in, the marketing page (public/home), the auth API, customers' invoice links, the component showcase, and static files
+  matcher: ["/((?!sign-in|home/|api/auth|api/cron|i/|e/|components|_next/|favicon.ico|.*\\.(?:svg|png|jpg|ico|webp|woff2?)$).*)"],
 };
