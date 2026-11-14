@@ -25,7 +25,13 @@ export async function sendEmail(input: {
 }) {
   const key = process.env.RESEND_API_KEY?.trim();
   const redirect = process.env.EMAIL_REDIRECT_TO?.trim();
-  const from = process.env.EMAIL_FROM?.trim();
+  // A workspace with its own verified domain sends from it; otherwise the app-wide EMAIL_FROM
+  let wsFrom: string | null = null;
+  if (input.workspaceId) {
+    const [ws] = await db.select({ fromEmail: s.workspaces.fromEmail, status: s.workspaces.domainStatus }).from(s.workspaces).where(eq(s.workspaces.id, input.workspaceId));
+    if (ws?.status === "verified" && ws.fromEmail) wsFrom = ws.fromEmail;
+  }
+  const from = wsFrom ? `${input.fromName ?? "InVin"} <${wsFrom}>` : process.env.EMAIL_FROM?.trim();
 
   const [row] = await db
     .insert(s.outbox)

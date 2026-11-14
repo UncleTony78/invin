@@ -75,6 +75,13 @@ export const workspaces = pgTable("workspaces", {
   template: text("template").notNull().default("stacked"),
   numberPrefix: text("number_prefix").notNull().default("INV-"),
   nextNumber: integer("next_number").notNull().default(1),
+  /* Sending from your own domain (Resend). Status: none | pending | verified | failed */
+  sendingDomain: text("sending_domain"),
+  domainId: text("domain_id"),
+  domainStatus: text("domain_status").notNull().default("none"),
+  domainRecords: jsonb("domain_records").$type<{ type: string; name: string; value: string; status: string }[]>().notNull().default([]),
+  /** The address emails come from once the domain is verified, e.g. invoices@studio.com */
+  fromEmail: text("from_email"),
   estimatePrefix: text("estimate_prefix").notNull().default("EST-"),
   nextEstimate: integer("next_estimate").notNull().default(1),
   /** What they invoice for, from the welcome chat (e.g. "Design"). Seeds the default invoice category. */
@@ -431,4 +438,21 @@ export const estimates = pgTable(
     sentAt: timestamp("sent_at", { withTimezone: true }),
   },
   (t) => [uniqueIndex("estimates_ws_number").on(t.workspaceId, t.number), uniqueIndex("estimates_token").on(t.publicToken)],
+);
+
+/** An invitation to join a workspace. The link works once, for the invited email, for 14 days. */
+export const invites = pgTable(
+  "invites",
+  {
+    id: id(),
+    workspaceId: text("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    role: roleEnum("role").notNull().default("member"),
+    token: text("token").notNull().$defaultFn(() => crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "").slice(0, 16)),
+    invitedBy: text("invited_by"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("invites_token").on(t.token), index("invites_ws").on(t.workspaceId)],
 );

@@ -127,3 +127,13 @@ export function estimateDecisionNotice(o: { customer: string; number: string; am
     html: shell({ brand: "#1A1916", business: "InVin", preheader: `${o.customer} ${o.accepted ? "accepted" : "declined"} ${o.number}`, body: paragraphs(text), button: { label: "Open estimate", url: o.url } }),
   };
 }
+
+/** Invitation to join a workspace. */
+export function inviteEmail(o: { inviter: string; business: string; role: string; url: string }) {
+  const text = `${o.inviter} invited you to ${o.business} on InVin as ${o.role === "admin" ? "an admin" : "a member"}.\n\nYou'll be able to create and send invoices, record payments and see what's owed. The link works for 14 days.`;
+  return {
+    subject: `${o.inviter} invited you to ${o.business} on InVin`,
+    text: `${text}\n\nJoin: ${o.url}`,
+    html: shell({ brand: "#1A1916", business: "InVin", preheader: `Join ${o.business} on InVin`, body: paragraphs(text), button: { label: `Join ${o.business}`, url: o.url } }),
+  };
+}

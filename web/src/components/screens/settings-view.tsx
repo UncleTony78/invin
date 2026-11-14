@@ -7,7 +7,6 @@ import { useState, type ReactElement, type ReactNode } from "react";
 import { Button, MorphLabel } from "@/components/ui/button";
 import { Segmented, Switch, TextArea, TextField } from "@/components/ui/form";
 import { Icon } from "@/components/ui/icon";
-import { Avatar, Tag } from "@/components/ui/identity";
 import { Dialog, DialogClose, DialogContent, DialogTrigger, Tooltip } from "@/components/ui/overlay";
 import { useToast } from "@/components/ui/toast";
 import { ColourSwatches, TemplatePicker, type Template } from "@/components/invoice/paper";
@@ -15,6 +14,8 @@ import { BRAND_COLOURS } from "@/lib/sample";
 import { tintFor } from "@/lib/format";
 import { deleteBankAccount, saveBankAccount, updateAutomation, updateBusiness, type AutomationInput, type BankInput, type BusinessInput } from "@/server/crm-actions";
 import { describeOffset } from "@/lib/schedule";
+import { TeamSection, type PendingInvite } from "./team-section";
+import { DomainSection, type DomainState } from "./domain-section";
 
 type Account = { id: string; bank: string; currency: string; rows: [string, string][] };
 type Member = { id: string; name: string; email: string; role: string; you: boolean };
@@ -24,7 +25,8 @@ const CURRENCIES = ["USD", "GBP", "EUR", "NGN"] as const;
 /** Reminder steps you can switch on, in days from the due date */
 const STEPS = [-7, -3, -1, 0, 1, 3, 7, 14, 30];
 
-export function SettingsView({ business, automation, accounts, team, email }: { business: BusinessInput; automation: AutomationInput; accounts: Account[]; team: Member[]; email: EmailState }) {
+export function SettingsView({ business, automation, accounts, team, email, invites, myRole, domain }: { business: BusinessInput; automation: AutomationInput; accounts: Account[]; team: Member[]; email: EmailState; invites: PendingInvite[]; myRole: string; domain: DomainState }) {
+  const canManage = myRole === "owner" || myRole === "admin";
   const router = useRouter();
   const toast = useToast();
   const [v, setV] = useState(business);
@@ -66,6 +68,10 @@ export function SettingsView({ business, automation, accounts, team, email }: { 
         </div>
       </div>
 
+      {!canManage && (
+        <div className="set-ro"><Icon name="eye" />You can see these settings. Only owners and admins can change them.</div>
+      )}
+      <fieldset className="set-fs" disabled={!canManage}>
       <Section title="Business" hint="Shown at the top of every invoice and in the emails customers get.">
         <div className="fgrid">
           <TextField label="Business name" value={v.name} onChange={(e) => set({ name: e.target.value })} />
@@ -193,18 +199,16 @@ export function SettingsView({ business, automation, accounts, team, email }: { 
           </div>
           <Link className="iv-btn iv-btn--ghost iv-btn--sm" href="/outbox">See outbox</Link>
         </div>
+        <div className="mt-2">
+          <h3 className="set-sub">Your own sending domain</h3>
+          <DomainSection d={domain} canManage={canManage} />
+        </div>
       </Section>
 
-      <Section title="Team" hint="Everyone here can create and send invoices. Inviting teammates comes next.">
-        <ul className="set-team">
-          {team.map((m) => (
-            <li key={m.id}>
-              <Avatar name={m.name} size="md" />
-              <span className="min-w-0 flex-1"><b>{m.name}{m.you && <span className="text-text-2 font-normal"> (you)</span>}</b><small>{m.email}</small></span>
-              <Tag>{m.role[0].toUpperCase() + m.role.slice(1)}</Tag>
-            </li>
-          ))}
-        </ul>
+      </fieldset>
+
+      <Section id="team" title="Team" hint="Who can use this workspace. Owners and admins manage settings and the team; members do the day-to-day billing.">
+        <TeamSection team={team} invites={invites} myRole={myRole} />
       </Section>
 
       <AnimatePresence>

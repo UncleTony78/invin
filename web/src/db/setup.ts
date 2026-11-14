@@ -19,7 +19,7 @@ const db = drizzle(client, { schema: s });
 
 async function main() {
   await migrate(db, { migrationsFolder: "./drizzle" });
-  await client.exec(`TRUNCATE estimates, saved_views, notification_seen, notifications, refunds, credits, reminder_log, series, onboarding, verification, account, session, "user", payment_claims, outbox, pins, events, payments, line_items, invoices, catalog_items, bank_accounts, customers, members, workspaces CASCADE`);
+  await client.exec(`TRUNCATE invites, estimates, saved_views, notification_seen, notifications, refunds, credits, reminder_log, series, onboarding, verification, account, session, "user", payment_claims, outbox, pins, events, payments, line_items, invoices, catalog_items, bank_accounts, customers, members, workspaces CASCADE`);
 
   const today = new Date();
   const d = (n: number) => isoDate(today, n);

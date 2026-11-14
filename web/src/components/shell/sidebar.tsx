@@ -8,6 +8,7 @@ import { Kbd } from "@/components/ui/button";
 import { Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator, MenuTrigger, Tooltip } from "@/components/ui/overlay";
 import { useToast } from "@/components/ui/toast";
 import { authClient } from "@/lib/auth-client";
+import { switchWorkspace } from "@/server/team-actions";
 import { tintFor } from "@/lib/format";
 import { reorderPins, togglePin } from "@/server/actions";
 import type { PinDTO } from "@/server/queries";
@@ -17,12 +18,14 @@ type NavItem = { href: string; label: string; icon: IconName; count?: number; al
 
 export function Sidebar({
   workspace,
+  workspaces = [],
   member,
   pins,
   overdue,
   rail,
 }: {
   workspace: { name: string; mark: string; brandColor: string };
+  workspaces?: { id: string; name: string; mark: string; brandColor: string; role: string; current: boolean }[];
   member: { name: string; role: string };
   pins: PinDTO[];
   overdue: number;
@@ -75,12 +78,24 @@ export function Sidebar({
             </button>
           </MenuTrigger>
           <MenuContent>
-            <MenuLabel>Workspace</MenuLabel>
-            <MenuItem>
-              <span className="iv-avatar iv-avatar--md" style={{ background: workspace.brandColor, color: "#fff", borderRadius: 7 }}>{workspace.mark}</span>
-              <span>{workspace.name}<small>You&apos;re the {member.role}</small></span>
-              <span className="iv-right"><Icon name="check" /></span>
-            </MenuItem>
+            <MenuLabel>{workspaces.length > 1 ? "Your workspaces" : "Workspace"}</MenuLabel>
+            {(workspaces.length ? workspaces : [{ id: "", name: workspace.name, mark: workspace.mark, brandColor: workspace.brandColor, role: member.role, current: true }]).map((w) => (
+              <MenuItem
+                key={w.id || "current"}
+                onClick={async () => {
+                  if (w.current) return;
+                  const r = await switchWorkspace(w.id);
+                  if (r.ok) {
+                    nav.push("/");
+                    nav.refresh();
+                  }
+                }}
+              >
+                <span className="iv-avatar iv-avatar--md" style={{ background: w.brandColor, color: "#fff", borderRadius: 7 }}>{w.mark}</span>
+                <span>{w.name}<small>You&apos;re {w.role === "owner" ? "the owner" : w.role === "admin" ? "an admin" : "a member"}</small></span>
+                {w.current && <span className="iv-right"><Icon name="check" /></span>}
+              </MenuItem>
+            ))}
             <MenuSeparator />
             <MenuItem render={<Link href="/settings" />}><Icon name="settings" />Workspace settings</MenuItem>
             <MenuSeparator />

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, isNull } from "drizzle-orm";
 import { SettingsView } from "@/components/screens/settings-view";
 import { db, schema as s } from "@/db";
 import { listBankAccounts } from "@/server/queries";
@@ -7,19 +7,25 @@ import { requireSession } from "@/server/session";
 
 export const metadata: Metadata = { title: "Settings · InVin" };
 
+/** Checked on the server when the page renders */
+const isPast = (d: Date) => d.getTime() < Date.now();
+
 export default async function SettingsPage() {
   const session = await requireSession();
   const w = session.workspace;
-  const [accounts, team] = await Promise.all([
+  const [accounts, team, invites] = await Promise.all([
     listBankAccounts(session),
     db.select().from(s.members).where(eq(s.members.workspaceId, w.id)).orderBy(asc(s.members.createdAt)),
+    db.select().from(s.invites).where(and(eq(s.invites.workspaceId, w.id), isNull(s.invites.acceptedAt))).orderBy(asc(s.invites.createdAt)),
   ]);
   const redirect = process.env.EMAIL_REDIRECT_TO;
   const email = !process.env.RESEND_API_KEY
     ? ({ mode: "off" } as const)
     : redirect
       ? ({ mode: "test", to: redirect } as const)
-      : process.env.EMAIL_FROM
+      : w.domainStatus === "verified" && w.fromEmail
+        ? ({ mode: "live", from: w.fromEmail } as const)
+        : process.env.EMAIL_FROM
         ? ({ mode: "live", from: process.env.EMAIL_FROM } as const)
         : ({ mode: "off" } as const);
   return (
@@ -29,6 +35,9 @@ export default async function SettingsPage() {
       accounts={accounts.map((a) => ({ id: a.id, bank: a.bank, currency: a.currency, rows: a.rows }))}
       team={team.map((m) => ({ id: m.id, name: m.name, email: m.email, role: m.role, you: m.id === session.member.id }))}
       email={email}
+      myRole={session.member.role}
+      invites={invites.map((i) => ({ id: i.id, email: i.email, role: i.role, expiresAt: i.expiresAt.toISOString(), expired: isPast(i.expiresAt) }))}
+      domain={{ domain: w.sendingDomain, status: w.domainStatus, records: w.domainRecords, fromEmail: w.fromEmail }}
     />
   );
 }

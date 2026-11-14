@@ -4,7 +4,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db, schema as s } from "@/db";
 import { toMinor } from "@/lib/invoice-math";
-import { requireSession } from "./session";
+import { requireRole, requireSession } from "./session";
 
 /* Customers, catalogue and workspace settings. Every action scopes to the session's workspace. */
 
@@ -90,7 +90,10 @@ export async function deleteCatalogItem(id: string) {
 export type BusinessInput = { name: string; mark: string; address: string; email: string; brandColor: string; template: string; numberPrefix: string; nextNumber: number };
 
 export async function updateBusiness(input: BusinessInput): Promise<Result> {
-  const session = await requireSession();
+  // Settings and bank details are for owners and admins
+  const gate = await requireRole("admin");
+  if (!gate.ok) return gate;
+  const session = gate.session;
   if (!input.name.trim()) return { ok: false, error: "Add your business name." };
   if (!emailOk(input.email.trim())) return { ok: false, error: "Check the business email, it looks incomplete." };
   if (!/^[A-Za-z0-9]{1,3}$/.test(input.mark.trim())) return { ok: false, error: "Use 1 to 3 letters or numbers for your mark." };
@@ -114,7 +117,10 @@ export async function updateBusiness(input: BusinessInput): Promise<Result> {
 export type BankInput = { currency: string; bank: string; rows: [string, string][] };
 
 export async function saveBankAccount(id: string | null, input: BankInput): Promise<Result<{ id: string }>> {
-  const session = await requireSession();
+  // Settings and bank details are for owners and admins
+  const gate = await requireRole("admin");
+  if (!gate.ok) return gate;
+  const session = gate.session;
   const rows = input.rows.map(([k, v]) => [k.trim(), v.trim()] as [string, string]).filter(([k, v]) => k && v);
   if (!input.bank.trim()) return { ok: false, error: "Add the bank's name." };
   if (!CURRENCIES.includes(input.currency)) return { ok: false, error: "Choose a currency." };
@@ -131,7 +137,10 @@ export async function saveBankAccount(id: string | null, input: BankInput): Prom
 }
 
 export async function deleteBankAccount(id: string): Promise<Result> {
-  const session = await requireSession();
+  // Settings and bank details are for owners and admins
+  const gate = await requireRole("admin");
+  if (!gate.ok) return gate;
+  const session = gate.session;
   // Invoices keep pointing at their account; don't pull the details out from under open invoices
   const [{ open }] = await db
     .select({ open: sql<number>`count(*)` })
@@ -148,7 +157,10 @@ export async function deleteBankAccount(id: string): Promise<Result> {
 export type AutomationInput = { remindersOn: boolean; reminderOffsets: number[]; receiptsOn: boolean; categories: string[]; customFields: { id: string; label: string; print: boolean }[] };
 
 export async function updateAutomation(input: AutomationInput): Promise<Result> {
-  const session = await requireSession();
+  // Settings and bank details are for owners and admins
+  const gate = await requireRole("admin");
+  if (!gate.ok) return gate;
+  const session = gate.session;
   const offsets = [...new Set(input.reminderOffsets.map(Number))].filter((n) => Number.isInteger(n) && n >= -30 && n <= 90).sort((a, b) => a - b);
   if (input.remindersOn && offsets.length === 0) return { ok: false, error: "Choose at least one reminder, or turn reminders off." };
   if (offsets.length > 8) return { ok: false, error: "Keep it to 8 reminders or fewer." };

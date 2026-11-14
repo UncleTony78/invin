@@ -152,3 +152,9 @@
 @media (prefers-reduced-transparency: reduce) {
   .wc-top, .wc-dock { background: var(--surface); backdrop-filter: none; }
 }
+@layer components {
+  .join h1 { margin-top: 16px; }
+  .join-mk { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; color: #fff; font-weight: 600; font-size: 14px; animation: chip-tick 320ms var(--ease-out); }
+  .join .auth-go { margin-top: 22px; }
+  .join .auth-note { margin-top: 16px; }
+}

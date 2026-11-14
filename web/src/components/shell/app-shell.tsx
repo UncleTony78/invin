@@ -22,6 +22,7 @@ export type ShellProps = {
   overdue: number;
   invoices: { id: string; number: string; customer: string; total: number; currency: string }[];
   unread: number;
+  workspaces: { id: string; name: string; mark: string; brandColor: string; role: string; current: boolean }[];
   children: ReactNode;
 };
 
@@ -64,7 +65,7 @@ function crumbsFor(path: string): [string, string?][] {
   return [[top.slice(0, 1).toUpperCase() + top.slice(1)]];
 }
 
-function Shell({ workspace, member, pins, overdue, invoices, unread, children }: ShellProps) {
+function Shell({ workspace, member, pins, overdue, invoices, unread, workspaces, children }: ShellProps) {
   const path = usePathname();
   const router = useRouter();
   const sheet = useInvoiceSheet();
@@ -145,7 +146,7 @@ function Shell({ workspace, member, pins, overdue, invoices, unread, children }:
 
   return (
     <div className="app" data-rail={rail || undefined} data-anim={anim || undefined} data-drawer={drawer || undefined}>
-      <Sidebar workspace={workspace} member={member} pins={pins} overdue={overdue} rail={rail} />
+      <Sidebar workspace={workspace} workspaces={workspaces} member={member} pins={pins} overdue={overdue} rail={rail} />
       <div className="dscrim" onClick={() => setDrawer(false)} />
       <div className="frame">
         <header className="top" data-scrolled={scrolled || undefined}>

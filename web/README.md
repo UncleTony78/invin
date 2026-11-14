@@ -38,7 +38,9 @@ Organising (built): tags on invoices (panel, list chips, filter, bulk tag), save
 
 Phase 3 (part 1, built): reports (`/reports`: invoiced vs collected, aging, by customer, category and currency, VAT, recurring revenue; CSV and print), customer statements (`/customers/<id>/statement`, PDF and email), estimates (`/estimates`; customers accept or decline at `/e/<token>`; convert to an invoice, or a deposit invoice then the rest).
 
-Next: teams and roles (invites), custom sending domain, mobile polish, email notification digests, Google sign-in.
+Teams: invite teammates by email as admin or member, change roles, hand over ownership, switch between workspaces. Members see Settings read-only. Custom sending domain: add your domain, copy the DNS records, check until Resend verifies it, then emails come from your own address.
+
+Next: email notification digests, Google sign-in, payments through a provider (Stripe or Paystack).
 
 ## Component library (Phase 0)
 
