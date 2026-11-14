@@ -10,21 +10,13 @@ import { signInCodeEmail } from "@/server/email-templates";
 /*
  * Sign-in is passwordless: we email a 6-digit code. New emails get an account on first sign-in,
  * then land in the welcome chat to set up a workspace.
- * Google sign-in switches on when GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are set. Google has already
- * checked the email, so it links to an existing account with the same address.
  * Built lazily so `next build` never opens the local database.
  */
-export const googleEnabled = () => !!(process.env.GOOGLE_CLIENT_ID?.trim() && process.env.GOOGLE_CLIENT_SECRET?.trim());
-
 function build() {
   return betterAuth({
     baseURL: appUrl(),
     secret: process.env.BETTER_AUTH_SECRET,
     database: drizzleAdapter(db, { provider: "pg", schema: { user: s.user, session: s.session, account: s.account, verification: s.verification } }),
-    ...(googleEnabled() && {
-      socialProviders: { google: { clientId: process.env.GOOGLE_CLIENT_ID!, clientSecret: process.env.GOOGLE_CLIENT_SECRET!, prompt: "select_account" as const } },
-      account: { accountLinking: { enabled: true, trustedProviders: ["google"] } },
-    }),
     session: {
       expiresIn: 60 * 60 * 24 * 30, // stay signed in for 30 days
       updateAge: 60 * 60 * 24,

@@ -10,13 +10,6 @@
   .auth-card form, .auth-card form + div { display: grid; }
   .auth-card .iv-field { margin-top: 22px; }
   .auth-go { margin-top: 16px; width: 100%; height: 40px; justify-content: center; }
-  .auth-google { margin-top: 20px; width: 100%; height: 40px; display: inline-flex; align-items: center; justify-content: center; gap: 10px; border-radius: var(--r-md); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line-2); color: var(--text); font: 500 var(--fs-14)/1 inherit; font-family: inherit; cursor: pointer; transition: background-color var(--m-in), transform 160ms var(--ease-out); }
-  @media (hover: hover) { .auth-google:hover:not(:disabled) { background: var(--surface-2); } }
-  .auth-google:active:not(:disabled) { transform: scale(0.98); }
-  .auth-google:disabled { cursor: default; opacity: 0.7; }
-  .auth-google:focus-visible { outline: 2px solid var(--focus, var(--text)); outline-offset: 2px; }
-  .auth-or { display: flex; align-items: center; gap: 12px; margin: 18px 0 4px; color: var(--text-2); font-size: var(--fs-12); }
-  .auth-or::before, .auth-or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
   .auth-fine { margin-top: 14px; color: var(--text-2); font-size: var(--fs-13); text-align: center; }
   .auth-err { display: flex; gap: 6px; align-items: center; margin-top: 10px; color: var(--st-failed); font-size: var(--fs-13); }
   .auth-note { display: flex; gap: 6px; align-items: center; margin-top: 12px; padding: 8px 10px; border-radius: var(--r-md); background: var(--secondary); color: var(--text-2); font-size: var(--fs-12); overflow-wrap: anywhere; }

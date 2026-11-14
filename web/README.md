@@ -40,7 +40,7 @@ Phase 3 (part 1, built): reports (`/reports`: invoiced vs collected, aging, by c
 
 Teams: invite teammates by email as admin or member, change roles, hand over ownership, switch between workspaces. Members see Settings read-only. Custom sending domain: add your domain, copy the DNS records, check until Resend verifies it, then emails come from your own address.
 
-Email summaries: each person picks off, daily or weekly (Monday 8am); quiet periods are skipped. Google sign-in appears on the sign-in page once GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are set (see .env.example).
+Email summaries: each person picks off, daily or weekly (Monday 8am); quiet periods are skipped.
 
 Next: online payments through a provider (Paystack or Stripe).
 
