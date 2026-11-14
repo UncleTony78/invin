@@ -7,7 +7,7 @@ import { Sequence, continueRender, delayRender, getStaticFiles, interpolate, sta
   is not there yet is simply skipped, so the video renders silent until the audio exists.
 */
 export type Cue = { kind: "vo" | "sfx" | "music"; id: string; at: number; volume?: number; trimEnd?: number };
-type Manifest = { vo: Record<string, { seconds: number }>; sfx: Record<string, { seconds: number }>; music: Record<string, { seconds: number }> };
+type Manifest = { vo: Record<string, { seconds: number }>; sfx: Record<string, { seconds: number }>; music: Record<string, { seconds: number; loop?: boolean }> };
 
 const exists = (p: string) => getStaticFiles().some((f) => f.name === p);
 
@@ -36,7 +36,7 @@ export function SoundLayer({ cues, fps, total, music, musicVolume = 0.42, duck =
   };
   return (
     <>
-      {music && exists(`audio/music/${music}.mp3`) && <Audio src={staticFile(`audio/music/${music}.mp3`)} volume={musicVol} />}
+      {music && exists(`audio/music/${music}.mp3`) && <Audio src={staticFile(`audio/music/${music}.mp3`)} volume={musicVol} loop={Boolean(m?.music[music]?.loop)} />}
       {cues.map((c, i) => {
         const p = `audio/${c.kind}/${c.id}.mp3`;
         if (c.kind === "music" || !exists(p)) return null;

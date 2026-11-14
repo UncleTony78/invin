@@ -73,8 +73,17 @@ if (!only || only === "sfx") {
 if (!only || only === "music") {
   for (const m of plan.music) {
     if (has("music", m.id)) continue;
-    save("music", m.id, await call("/music", { prompt: m.prompt, music_length_ms: m.seconds * 1000, force_instrumental: true }));
-    manifest.music[m.id] = { seconds: m.seconds };
+    try {
+      save("music", m.id, await call("/music", { prompt: m.prompt, music_length_ms: m.seconds * 1000, force_instrumental: true }));
+      manifest.music[m.id] = { seconds: m.seconds };
+    } catch (e) {
+      if (!/402|paid_plan/.test(String(e))) throw e;
+      // Free plan: no Music API. A seamless loop from the sound-effects model stands in, looped under the cut.
+      const loopSec = Math.min(30, m.seconds);
+      console.log(`music ${m.id}: Music API needs a paid plan, making a ${loopSec}s loop instead`);
+      save("music", m.id, await call("/sound-generation?output_format=mp3_44100_128", { text: m.loopPrompt ?? m.prompt, duration_seconds: loopSec, loop: true, prompt_influence: 0.6 }));
+      manifest.music[m.id] = { seconds: loopSec, loop: true };
+    }
     writeManifest();
     console.log(`music ${m.id}`);
   }
